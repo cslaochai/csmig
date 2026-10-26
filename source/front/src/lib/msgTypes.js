@@ -14,7 +14,10 @@ export const MSG_TYPES = {
   '2304': '门诊退费',
   'dayBill': '日对账',
   'personQuery': '参保人查询',
-  'insurePersonQuery': '参保人核验'
+  'insurePersonQuery': '参保人核验',
+  '1301': '药品目录下载',
+  '1302': '诊疗项目目录下载',
+  '1303': '医用耗材目录下载'
 }
 
 export function msgTypeName(t) {
