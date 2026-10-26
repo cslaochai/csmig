@@ -1,0 +1,54 @@
+server:
+  port: 8091
+  servlet:
+    context-path: /mip
+
+spring:
+  application:
+    name: mig-backend
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${MIP_DB_URL:jdbc:mysql://192.168.88.132:3306/mip_gateway?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true}
+    username: ${MIP_DB_USERNAME:xz_feng}
+    password: ${MIP_DB_PASSWORD:Feng123456!}
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-test-query: SELECT 1
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+      encoding: UTF-8
+      continue-on-error: false
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: AUTO
+
+# ===== 前置机业务参数 =====
+mip:
+  # 医保局平台（开发期=csmis mock；生产期=真实医保局地址）
+  upstream:
+    base-url: ${MIP_UPSTREAM_URL:http://localhost:8090/mss}
+    connect-timeout-ms: 5000
+    read-timeout-ms: 30000
+  # 加签加密开关（开发期false=透传明文；生产期true=加SM2签名+SM4加密）
+  crypto:
+    enabled: false
+    # TODO: 生产期配置CA证书路径、医保局公钥、SM4密钥等
+
+logging:
+  level:
+    com.mip: debug

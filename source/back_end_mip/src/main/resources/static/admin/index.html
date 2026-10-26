@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>csmip 医保前置系统</title>
+<link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background: #f0f2f5; }
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar { width: 200px; background: #001529; color: #fff; flex-shrink: 0; }
+  .sidebar .logo { height: 56px; line-height: 56px; text-align: center; font-size: 15px; font-weight: 600; background: #1269B5; }
+  .sidebar .menu-item { padding: 12px 24px; cursor: pointer; font-size: 13px; color: rgba(255,255,255,.75); }
+  .sidebar .menu-item.active { background: #1269B5; color: #fff; }
+  .sidebar .menu-item:hover { color: #fff; }
+  .main { flex: 1; padding: 16px; }
+  .page-title { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 16px; }
+  .card { background: #fff; border-radius: 4px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  .stat-row { display: flex; gap: 16px; margin-bottom: 16px; }
+  .stat-item { flex: 1; background: #fff; border-radius: 4px; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  .stat-item .num { font-size: 24px; font-weight: 700; color: #1269B5; }
+  .stat-item .num.danger { color: #e74c3c; }
+  .stat-item .num.success { color: #27ae60; }
+  .stat-item .label { font-size: 12px; color: #999; margin-top: 4px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .toolbar input, .toolbar select { height: 32px; padding: 0 8px; border: 1px solid #dcdfe6; border-radius: 4px; font-size: 13px; }
+  .toolbar button { height: 32px; padding: 0 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; }
+  .btn-primary { background: #1269B5; color: #fff; }
+  .btn-default { background: #fff; color: #333; border: 1px solid #dcdfe6 !important; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #ebeef5; }
+  th { background: #fafafa; color: #333; font-weight: 600; }
+  tr:hover { background: #f5f7fa; }
+  tr.fail-row { background: #fef0f0; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+  .tag-success { background: #e1f3d8; color: #67c23a; }
+  .tag-danger { background: #fde2e2; color: #f56c6c; }
+  .link { color: #1269B5; cursor: pointer; text-decoration: none; }
+  .link:hover { text-decoration: underline; }
+  .pagination { margin-top: 12px; text-align: right; font-size: 13px; color: #666; }
+  .pagination button { margin: 0 4px; padding: 2px 10px; border: 1px solid #dcdfe6; background: #fff; cursor: pointer; }
+  .pagination button.active { background: #1269B5; color: #fff; border-color: #1269B5; }
+  /* 弹窗 */
+  .dialog-mask { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100; justify-content: center; align-items: center; }
+  .dialog-mask.show { display: flex; }
+  .dialog { background: #fff; border-radius: 4px; width: 700px; max-height: 80vh; display: flex; flex-direction: column; }
+  .dialog-header { padding: 16px; border-bottom: 1px solid #ebeef5; font-size: 15px; font-weight: 600; }
+  .dialog-body { padding: 16px; overflow: auto; flex: 1; }
+  .dialog-body pre { white-space: pre-wrap; word-break: break-all; font-size: 12px; background: #f5f5f5; padding: 10px; border-radius: 4px; }
+  .dialog-footer { padding: 12px 16px; border-top: 1px solid #ebeef5; text-align: right; }
+  .dialog-footer button { height: 32px; padding: 0 16px; border: 1px solid #dcdfe6; background: #fff; border-radius: 4px; cursor: pointer; margin-left: 8px; }
+  .config-line { font-size: 13px; line-height: 2; color: #333; }
+  .config-line b { color: #1269B5; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="layout">
+    <div class="sidebar">
+      <div class="logo">csmip 前置系统</div>
+      <div class="menu-item active" @click="tab='monitor'">接口监控</div>
+      <div class="menu-item" @click="tab='logs'">交易流水</div>
+      <div class="menu-item" @click="tab='config'">配置 & 对账</div>
+    </div>
+    <div class="main">
+
+      <!-- ① 监控面板 -->
+      <div v-show="tab==='monitor'">
+        <div class="page-title">接口监控</div>
+        <div class="stat-row">
+          <div class="stat-item"><div class="num">{{ stats.total }}</div><div class="label">今日总调用</div></div>
+          <div class="stat-item"><div class="num success">{{ stats.successRate }}%</div><div class="label">成功率</div></div>
+          <div class="stat-item"><div class="num danger">{{ stats.fail }}</div><div class="label">失败次数</div></div>
+          <div class="stat-item"><div class="num">{{ stats.avgCostMs }}ms</div><div class="label">平均耗时</div></div>
+        </div>
+        <div class="card">
+          <h3 style="font-size:14px;margin-bottom:12px;color:#333">最近调用</h3>
+          <table>
+            <thead><tr><th>ID</th><th>类型</th><th>交易号</th><th>结果</th><th>耗时</th><th>错误</th><th>时间</th></tr></thead>
+            <tbody>
+              <tr v-for="r in stats.recent" :class="{ 'fail-row': r.success===0 }" :key="r.id">
+                <td>{{ r.id }}</td><td>{{ r.msgType }}</td><td>{{ r.tradeNo }}</td>
+                <td><span class="tag" :class="r.success===1?'tag-success':'tag-danger'">{{ r.success===1?'成功':'失败' }}</span></td>
+                <td>{{ r.costMs }}ms</td><td style="color:#e74c3c">{{ r.errMsg || '-' }}</td>
+                <td>{{ r.createdAt }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ② 流水查询 -->
+      <div v-show="tab==='logs'">
+        <div class="page-title">交易流水</div>
+        <div class="card">
+          <div class="toolbar">
+            <input v-model="query.msgType" placeholder="报文类型(2201/2301)">
+            <input v-model="query.tradeNo" placeholder="交易号/HIS单号" style="width:200px">
+            <input v-model="query.date" type="date">
+            <button class="btn-primary" @click="loadLogs(1)">查询</button>
+            <button class="btn-default" @click="resetQuery">重置</button>
+          </div>
+          <table>
+            <thead><tr><th>ID</th><th>类型</th><th>交易号</th><th>结果</th><th>耗时</th><th>错误</th><th>请求</th><th>响应</th><th>操作</th><th>时间</th></tr></thead>
+            <tbody>
+              <tr v-for="r in logs.list" :class="{ 'fail-row': r.success===0 }" :key="r.id">
+                <td>{{ r.id }}</td><td>{{ r.msgType }}</td><td>{{ r.tradeNo }}</td>
+                <td><span class="tag" :class="r.success===1?'tag-success':'tag-danger'">{{ r.success===1?'成功':'失败' }}</span></td>
+                <td>{{ r.costMs }}ms</td><td style="color:#e74c3c;max-width:200px;overflow:hidden;text-overflow:ellipsis">{{ r.errMsg || '-' }}</td>
+                <td><span class="link" @click="showBody(r,'requestBody')">查看</span></td>
+                <td><span class="link" @click="showBody(r,'responseBody')">查看</span></td>
+                <td><span class="link" style="color:#e6a23c" @click="resend(r)">重发</span></td>
+                <td>{{ r.createdAt }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pagination">
+            共 {{ logs.total }} 条
+            <button v-for="p in totalPages" :class="{active:p===logs.page}" @click="loadLogs(p)">{{ p }}</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ③ 配置 & 对账 -->
+      <div v-show="tab==='config'">
+        <div class="page-title">配置 & 对账导出</div>
+        <div class="card">
+          <div class="config-line">上游平台地址：<b>{{ config.upstreamUrl }}</b></div>
+          <div class="config-line">连接超时：<b>{{ config.connectTimeoutMs }}ms</b>　读取超时：<b>{{ config.readTimeoutMs }}ms</b></div>
+          <div class="config-line" style="color:#999">（动态调整配置后续加管理界面，当前改 application.yml 重启生效）</div>
+        </div>
+        <div class="card">
+          <h3 style="font-size:14px;margin-bottom:12px;color:#333">对账报表导出</h3>
+          <div class="toolbar">
+            <input v-model="exportDate" type="date">
+            <button class="btn-primary" @click="exportCsv">导出当日CSV</button>
+          </div>
+          <div style="font-size:12px;color:#999;line-height:1.8">导出内容：当日全部医保交易（报文类型/交易号/成功与否/耗时/错误信息/时间），可直接给财务/医保科对账。</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 报文详情弹窗 -->
+  <div class="dialog-mask" :class="{show: bodyDialog.visible}">
+    <div class="dialog">
+      <div class="dialog-header">{{ bodyDialog.title }}</div>
+      <div class="dialog-body"><pre>{{ bodyDialog.content }}</pre></div>
+      <div class="dialog-footer"><button @click="bodyDialog.visible=false">关闭</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script>
+const { createApp, ref, reactive, computed, onMounted } = Vue;
+const api = axios; // 同源，直接用全局axios CDN
+// axios 没在CDN里？直接用fetch
+async function http(url, opts={}) {
+  const r = await fetch('/mip' + url, {
+    method: opts.method || 'GET',
+    headers: {'Content-Type':'application/json'},
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  return { data: await r.json() };
+}
+
+createApp({
+  setup() {
+    const tab = ref('monitor');
+    const stats = reactive({ total:0, success:0, fail:0, successRate:100, avgCostMs:0, recent:[] });
+    const query = reactive({ msgType:'', tradeNo:'', date:'' });
+    const logs = reactive({ total:0, list:[], page:1 });
+    const config = reactive({ upstreamUrl:'', connectTimeoutMs:0, readTimeoutMs:0 });
+    const exportDate = ref(new Date().toISOString().slice(0,10));
+    const bodyDialog = reactive({ visible:false, title:'', content:'' });
+
+    const totalPages = computed(() => Math.max(1, Math.ceil(logs.total / 20)));
+
+    async function loadStats() {
+      const { data } = await http('/admin/stats/today');
+      Object.assign(stats, data);
+    }
+    async function loadLogs(page) {
+      logs.page = page;
+      const q = new URLSearchParams({ page, size:20 });
+      if (query.msgType) q.set('msgType', query.msgType);
+      if (query.tradeNo) q.set('tradeNo', query.tradeNo);
+      if (query.date) q.set('date', query.date);
+      const { data } = await http('/admin/logs/page?' + q);
+      logs.total = data.total; logs.list = data.list;
+    }
+    function resetQuery() { query.msgType=''; query.tradeNo=''; query.date=''; loadLogs(1); }
+    async function loadConfig() {
+      const { data } = await http('/admin/config');
+      Object.assign(config, data);
+    }
+    function showBody(row, field) {
+      bodyDialog.title = (field==='requestBody'?'请求报文':'响应报文') + ' #' + row.id;
+      bodyDialog.content = row[field] || '(空)';
+      bodyDialog.visible = true;
+    }
+    async function resend(row) {
+      if (!confirm(`确认重发交易 ${row.tradeNo}？`)) return;
+      await http(`/admin/logs/${row.id}/resend`, { method:'POST' });
+      alert('已重发');
+      loadStats(); loadLogs(1);
+    }
+    function exportCsv() {
+      window.location.href = '/mip/admin/recon/export?date=' + exportDate.value;
+    }
+
+    onMounted(() => { loadStats(); loadLogs(1); loadConfig(); });
+    return { tab, stats, query, logs, config, exportDate, bodyDialog, totalPages, loadLogs, resetQuery, showBody, resend, exportCsv };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
