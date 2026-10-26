@@ -74,7 +74,7 @@
 import {computed} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {ArrowRight, Bell, Collection, DataAnalysis, DataLine, Document, Files, HomeFilled, Key, List, Monitor, Odometer, RefreshLeft, Setting, SwitchButton, Tickets, TrendCharts, User} from '@element-plus/icons-vue'
+import {ArrowRight, Bell, Collection, DataAnalysis, DataLine, Document, Files, HomeFilled, Key, List, Memo, Monitor, Odometer, RefreshLeft, Setting, SwitchButton, Tickets, TrendCharts, User} from '@element-plus/icons-vue'
 import {logout as apiLogout} from '@/api/system'
 
 const route = useRoute()
@@ -115,7 +115,8 @@ const menuGroups = [
     title: '系统管理',
     children: [
       { path: '/config', title: '基础配置', icon: Setting },
-      { path: '/cert', title: '密钥与证书', icon: Key }
+      { path: '/cert', title: '密钥与证书', icon: Key },
+      { path: '/audit', title: '操作日志', icon: Memo }
     ]
   }
 ]

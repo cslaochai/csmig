@@ -43,3 +43,17 @@ CREATE TABLE IF NOT EXISTS mip_dict_cache (
     UNIQUE KEY uk_type_code (dict_type, his_code),
     KEY idx_type_status (dict_type, match_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='医保目录缓存';
+
+-- 操作审计日志：登录/重发/目录变更/对账导出等管理操作留痕，等保审计用
+CREATE TABLE IF NOT EXISTS mip_audit_log (
+    id         BIGINT       NOT NULL AUTO_INCREMENT,
+    username   VARCHAR(64)  NOT NULL COMMENT '操作人',
+    action     VARCHAR(32)  NOT NULL COMMENT '操作：LOGIN/LOGOUT/RESEND/DICT_CREATE/DICT_DELETE/RECON_EXPORT',
+    target     VARCHAR(64)  NULL COMMENT '操作对象（日志ID/目录ID等）',
+    detail     VARCHAR(500) NULL COMMENT '操作详情',
+    ip         VARCHAR(64)  NULL COMMENT '操作来源IP',
+    created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_action_time (action, created_at),
+    KEY idx_username_time (username, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作审计日志';

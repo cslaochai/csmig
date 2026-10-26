@@ -12,6 +12,7 @@ import com.mig.auth.util.JwtUtils;
 import com.mig.auth.vo.LoginVO;
 import com.mig.auth.vo.PublicKeyVO;
 import com.mig.auth.vo.UserLoginVO;
+import com.mig.service.AuditService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,8 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordCipherService passwordCipherService;
 
     private final JwtUtils jwtUtils;
+
+    private final AuditService auditService;
 
     @Override
     public PublicKeyVO publicKey() {
@@ -87,6 +90,7 @@ public class AuthServiceImpl implements AuthService {
         vo.setUsername(user.getUsername());
         vo.setRealName(user.getRealName());
         vo.setCurrentRole(role);
+        auditService.record(request, username, "LOGIN", username, "登录成功");
         log.info("[登录] 成功：username={}, role={}", username, role);
         return vo;
     }
@@ -106,6 +110,9 @@ public class AuthServiceImpl implements AuthService {
     public void logout(HttpServletRequest request) {
         Long userId = currentUserId();
         if (userId != null) {
+            Object username = request.getAttribute("currentUsername");
+            auditService.record(request, username == null ? "anonymous" : String.valueOf(username),
+                    "LOGOUT", String.valueOf(userId), "退出登录");
             log.info("[登出] userId={}", userId);
         }
     }

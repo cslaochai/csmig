@@ -27,7 +27,8 @@ const routes = [
             { path: 'person', name: 'Person', component: () => import('@/views/Person.vue'), meta: { title: '参保人信息', icon: 'User' } },
             // ---- 系统管理 ----
             { path: 'config', name: 'Config', component: () => import('@/views/Config.vue'), meta: { title: '基础配置', icon: 'Setting' } },
-            { path: 'cert', name: 'Cert', component: () => import('@/views/Cert.vue'), meta: { title: '密钥与证书', icon: 'Key' } }
+            { path: 'cert', name: 'Cert', component: () => import('@/views/Cert.vue'), meta: { title: '密钥与证书', icon: 'Key' } },
+            { path: 'audit', name: 'Audit', component: () => import('@/views/Audit.vue'), meta: { title: '操作日志', icon: 'Memo' } }
         ]
     }
 ]

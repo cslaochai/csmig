@@ -12,11 +12,22 @@
         </el-form-item>
       </el-form>
       <div style="font-size:12px;color:#999;padding:0 16px 10px">
-        仅展示失败交易（success=0）。排查超时、结果未知等异常后可手动重发补偿，避免医保漏结算/重复扣费。
+        仅展示失败交易（success=0）。排查超时、结果未知等异常后可手动/批量重发补偿，避免医保漏结算/重复扣费。
       </div>
-      <el-table :data="list" size="small">
+      <div style="padding:0 16px 10px;display:flex;align-items:center;gap:8px">
+        <el-button type="warning" size="small" :disabled="selection.length === 0" :loading="batchLoading" @click="batchResend">
+          批量重发（{{ selection.length }}）
+        </el-button>
+        <el-button size="small" @click="load(1)" v-if="selection.length">刷新</el-button>
+      </div>
+      <el-table :data="list" size="small" @selection-change="rows => selection = rows">
+        <el-table-column type="selection" width="42"/>
         <el-table-column prop="id" label="ID" width="70"/>
-        <el-table-column prop="msgType" label="类型" width="100"/>
+        <el-table-column label="类型" width="150">
+          <template #default="{row}">
+            <span>{{ msgTypeName(row.msgType) }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="tradeNo" label="交易号" width="180" show-overflow-tooltip/>
         <el-table-column prop="costMs" label="ms" width="80"/>
         <el-table-column prop="errMsg" label="失败原因" show-overflow-tooltip/>
@@ -38,14 +49,17 @@
   </div>
 </template>
 <script setup>
-import { reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import request from '@/api/request'
 import { ElMessageBox, ElMessage } from 'element-plus'
+import { msgTypeName } from '@/lib/msgTypes'
 
 const query = reactive({ msgType: '', tradeNo: '', date: '' })
 const list = reactive([])
 let total = 0
 const body = reactive({ visible: false, title: '', content: '' })
+const selection = ref([])
+const batchLoading = ref(false)
 
 async function load(page) {
   const res = await request.get('/admin/logs/page', { params: { page, size: 20, success: 0, ...query } })
@@ -63,6 +77,22 @@ async function resend(row) {
   await request.post(`/admin/logs/${row.id}/resend`)
   ElMessage.success('已重发')
   load(1)
+}
+async function batchResend() {
+  const ids = selection.value.map(r => r.id)
+  await ElMessageBox.confirm(`确认批量重发 ${ids.length} 笔失败交易？将逐个再次调用医保局。`, '批量补偿', { type: 'warning' })
+  batchLoading.value = true
+  try {
+    const res = await request.post('/admin/logs/batch-resend', { ids })
+    const r = res.data
+    if (r.fail > 0) {
+      ElMessage.warning(`完成：${r.ok} 成功 / ${r.fail} 失败，失败项见响应明细`)
+    } else {
+      ElMessage.success(`批量重发完成：${r.ok} 笔全部成功`)
+    }
+    selection.value = []
+    load(1)
+  } catch (e) { /* 错误已由拦截器提示 */ } finally { batchLoading.value = false }
 }
 onMounted(() => load(1))
 </script>

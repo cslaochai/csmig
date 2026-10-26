@@ -13,7 +13,9 @@
       </el-form>
       <el-table :data="list" :row-class-name="rowClass" size="small">
         <el-table-column prop="id" label="ID" width="70"/>
-        <el-table-column prop="msgType" label="类型" width="100"/>
+        <el-table-column label="类型" width="170">
+          <template #default="{row}"><span>{{ msgTypeName(row.msgType) }}</span></template>
+        </el-table-column>
         <el-table-column prop="tradeNo" label="交易号" width="180" show-overflow-tooltip/>
         <el-table-column label="结果" width="80">
           <template #default="{row}">
@@ -40,6 +42,7 @@
 import { reactive, onMounted } from 'vue'
 import request from '@/api/request'
 import { ElMessageBox, ElMessage } from 'element-plus'
+import { msgTypeName } from '@/lib/msgTypes'
 const query = reactive({ msgType:'', tradeNo:'', date:'' })
 const list = reactive([]); let total = 0
 const body = reactive({ visible:false, title:'', content:'' })

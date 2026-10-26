@@ -63,6 +63,10 @@ request.interceptors.request.use(
 // 响应拦截器：统一处理业务码与 HTTP 错误；{ silent: true } 的请求不打扰全局提示
 request.interceptors.response.use(
     response => {
+        // 文件下载（blob）：直接返回原始数据，不参与业务码解包
+        if (response.config.responseType === 'blob') {
+            return response.data
+        }
         const res = response.data
         if (res.code !== 200) {
             const message = res.message || '操作失败'

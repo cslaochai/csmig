@@ -32,6 +32,7 @@
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import request from '@/api/request'
 import * as echarts from 'echarts'
+import { msgTypeName } from '@/lib/msgTypes'
 
 const stats = reactive({ total: 0, success: 0, fail: 0, successRate: 100, avgCostMs: 0, byType: {}, recent: [] })
 const chartRef = ref(null)
@@ -45,7 +46,7 @@ function renderChart(byType) {
     tooltip: { trigger: 'axis' },
     legend: { data: ['总调用', '成功'] },
     grid: { left: 40, right: 20, top: 40, bottom: 30 },
-    xAxis: { type: 'category', data: types, name: '报文类型' },
+    xAxis: { type: 'category', data: types.map(msgTypeName), name: '报文类型' },
     yAxis: { type: 'value', minInterval: 1 },
     series: [
       { name: '总调用', type: 'bar', data: types.map(t => byType[t][0]), itemStyle: { color: '#1269B5' } },
