@@ -43,7 +43,8 @@ import request from '@/api/request'
 
 const ACTION_NAMES = {
   LOGIN: '登录', LOGOUT: '退出', RESEND: '重发',
-  DICT_CREATE: '目录新增', DICT_DELETE: '目录删除', RECON_EXPORT: '对账导出'
+  DICT_CREATE: '目录新增', DICT_UPDATE: '目录修改', DICT_DELETE: '目录删除',
+  RECON_EXPORT: '对账导出', ALERT_RULE: '告警规则'
 }
 const actionName = a => ACTION_NAMES[a] || a
 function actionType(a) {

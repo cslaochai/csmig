@@ -57,3 +57,14 @@ CREATE TABLE IF NOT EXISTS mip_audit_log (
     KEY idx_action_time (action, created_at),
     KEY idx_username_time (username, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作审计日志';
+
+-- 告警规则：失败率/超时阈值配置，生产期由定时任务按规则扫描并推送
+CREATE TABLE IF NOT EXISTS mip_alert_rule (
+    id          BIGINT       NOT NULL AUTO_INCREMENT,
+    rule_type   VARCHAR(32)  NOT NULL COMMENT '规则类型：FAIL_RATE-失败率 FAIL_COUNT-失败笔数 AVG_COST-平均耗时',
+    threshold   DECIMAL(10,2) NOT NULL COMMENT '阈值（失败率为百分数，如10.00表示10%）',
+    enabled     TINYINT      NOT NULL DEFAULT 1 COMMENT '1-启用 0-停用',
+    remark      VARCHAR(200) NULL COMMENT '规则说明',
+    created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='告警规则';

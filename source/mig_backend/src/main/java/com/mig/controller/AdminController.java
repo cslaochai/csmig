@@ -6,9 +6,11 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mig.config.GatewayConfig;
 import com.mig.common.Result;
+import com.mig.entity.AlertRule;
 import com.mig.entity.AuditLog;
 import com.mig.entity.DictCache;
 import com.mig.entity.GatewayLog;
+import com.mig.mapper.AlertRuleMapper;
 import com.mig.mapper.AuditLogMapper;
 import com.mig.mapper.DictCacheMapper;
 import com.mig.mapper.GatewayLogMapper;
@@ -46,6 +48,7 @@ public class AdminController {
     private final GatewayLogMapper logMapper;
     private final DictCacheMapper dictMapper;
     private final AuditLogMapper auditMapper;
+    private final AlertRuleMapper alertRuleMapper;
     private final AuditService auditService;
     private final GatewayForwardService forwardService;
     private final GatewayConfig.UpstreamProps upstreamProps;
@@ -254,9 +257,7 @@ public class AdminController {
         return Result.success(r);
     }
 
-    // ---------- ⑩ 操作审计日志查询 ----------
-
-    @GetMapping("/audit/page")
+    // ---------- ⑩ 操作审计日志查询 ----------    @GetMapping("/audit/page")
     public Result<Map<String, Object>> auditPage(@RequestParam(defaultValue = "1") int page,
                                                  @RequestParam(defaultValue = "20") int size,
                                                  @RequestParam(required = false) String action,
@@ -400,12 +401,80 @@ public class AdminController {
         return Result.success("新增成功", null);
     }
 
+    @PutMapping("/dict/{id}")
+    public Result<Void> dictUpdate(@PathVariable Long id, @RequestBody DictCache dict, HttpServletRequest request) {
+        DictCache row = dictMapper.selectById(id);
+        if (row == null) throw new IllegalArgumentException("目录不存在");
+        if (dict.getDictType() == null || dict.getDictType().isBlank()
+                || dict.getHisCode() == null || dict.getHisCode().isBlank()
+                || dict.getHisName() == null || dict.getHisName().isBlank()) {
+            throw new IllegalArgumentException("目录类型、院内编码、院内名称为必填");
+        }
+        row.setDictType(dict.getDictType());
+        row.setHisCode(dict.getHisCode());
+        row.setHisName(dict.getHisName());
+        row.setMediCode(dict.getMediCode());
+        row.setMediName(dict.getMediName());
+        row.setMatchStatus(dict.getMatchStatus() == null ? row.getMatchStatus() : dict.getMatchStatus());
+        dictMapper.updateById(row);
+        auditService.record(request, "DICT_UPDATE", "dict-" + id,
+                "修改目录缓存 " + row.getDictType() + "/" + row.getHisCode() + " " + row.getHisName());
+        return Result.success("修改成功", null);
+    }
+
     @DeleteMapping("/dict/{id}")
     public Result<Void> dictDelete(@PathVariable Long id, HttpServletRequest request) {
         DictCache row = dictMapper.selectById(id);
         dictMapper.deleteById(id);
         auditService.record(request, "DICT_DELETE", "dict-" + id,
                 row == null ? "删除目录缓存 #" + id : "删除目录缓存 " + row.getDictType() + "/" + row.getHisCode() + " " + row.getHisName());
+        return Result.success("删除成功", null);
+    }
+
+    // ---------- ⑪ 告警规则配置 ----------
+
+    @GetMapping("/alerts/rules")
+    public Result<List<AlertRule>> alertRules() {
+        return Result.success(alertRuleMapper.selectList(
+                new LambdaQueryWrapper<AlertRule>().orderByAsc(AlertRule::getId)));
+    }
+
+    @PostMapping("/alerts/rules")
+    public Result<Void> alertRuleCreate(@RequestBody AlertRule rule, HttpServletRequest request) {
+        if (rule.getRuleType() == null || rule.getRuleType().isBlank()
+                || rule.getThreshold() == null) {
+            throw new IllegalArgumentException("规则类型与阈值为必填");
+        }
+        rule.setEnabled(rule.getEnabled() == null ? 1 : rule.getEnabled());
+        alertRuleMapper.insert(rule);
+        auditService.record(request, "ALERT_RULE", "rule-" + rule.getId(),
+                "新增告警规则 " + rule.getRuleType() + " 阈值" + rule.getThreshold());
+        return Result.success("新增成功", null);
+    }
+
+    @PutMapping("/alerts/rules/{id}")
+    public Result<Void> alertRuleUpdate(@PathVariable Long id, @RequestBody AlertRule rule, HttpServletRequest request) {
+        AlertRule row = alertRuleMapper.selectById(id);
+        if (row == null) throw new IllegalArgumentException("规则不存在");
+        if (rule.getRuleType() == null || rule.getRuleType().isBlank()
+                || rule.getThreshold() == null) {
+            throw new IllegalArgumentException("规则类型与阈值为必填");
+        }
+        row.setRuleType(rule.getRuleType());
+        row.setThreshold(rule.getThreshold());
+        row.setEnabled(rule.getEnabled() == null ? row.getEnabled() : rule.getEnabled());
+        row.setRemark(rule.getRemark());
+        alertRuleMapper.updateById(row);
+        auditService.record(request, "ALERT_RULE", "rule-" + id, "修改告警规则 " + row.getRuleType());
+        return Result.success("修改成功", null);
+    }
+
+    @DeleteMapping("/alerts/rules/{id}")
+    public Result<Void> alertRuleDelete(@PathVariable Long id, HttpServletRequest request) {
+        AlertRule row = alertRuleMapper.selectById(id);
+        alertRuleMapper.deleteById(id);
+        auditService.record(request, "ALERT_RULE", "rule-" + id,
+                row == null ? "删除告警规则 #" + id : "删除告警规则 " + row.getRuleType());
         return Result.success("删除成功", null);
     }
 

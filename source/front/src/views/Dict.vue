@@ -45,8 +45,9 @@
             <el-tag :type="row.matchStatus === 1 ? 'success' : 'info'" size="small">{{ row.matchStatus === 1 ? '已匹配' : '未匹配' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="80">
+        <el-table-column label="操作" width="120">
           <template #default="{row}">
+            <el-button link type="primary" size="small" @click="openEdit(row)">编辑</el-button>
             <el-button link type="danger" size="small" @click="remove(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -57,7 +58,7 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="create.visible" title="新增目录缓存" width="520px">
+    <el-dialog v-model="create.visible" :title="create.id ? '编辑目录缓存' : '新增目录缓存'" width="520px">
       <el-form :model="create.form" label-width="90px">
         <el-form-item label="目录类型" required>
           <el-select v-model="create.form.dictType" style="width:100%">
@@ -101,7 +102,7 @@ const statRowsComputed = computed(() => {
 })
 
 const create = reactive({
-  visible: false, loading: false,
+  visible: false, loading: false, id: null,
   form: { dictType: 'DRUG', hisCode: '', hisName: '', mediCode: '', mediName: '', matchStatus: 0 }
 })
 
@@ -122,14 +123,26 @@ async function loadStats() {
 }
 
 function openCreate() {
+  create.id = null
   create.form = { dictType: 'DRUG', hisCode: '', hisName: '', mediCode: '', mediName: '', matchStatus: 0 }
+  create.visible = true
+}
+function openEdit(row) {
+  create.id = row.id
+  create.form = { dictType: row.dictType, hisCode: row.hisCode, hisName: row.hisName,
+                  mediCode: row.mediCode || '', mediName: row.mediName || '', matchStatus: row.matchStatus }
   create.visible = true
 }
 async function submitCreate() {
   create.loading = true
   try {
-    await request.post('/admin/dict', create.form)
-    ElMessage.success('新增成功')
+    if (create.id) {
+      await request.put(`/admin/dict/${create.id}`, create.form)
+      ElMessage.success('修改成功')
+    } else {
+      await request.post('/admin/dict', create.form)
+      ElMessage.success('新增成功')
+    }
     create.visible = false
     load(1); loadStats()
   } catch (e) { /* 错误已由拦截器提示 */ } finally { create.loading = false }

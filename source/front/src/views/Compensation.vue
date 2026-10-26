@@ -46,6 +46,16 @@
     <el-dialog v-model="body.visible" :title="body.title" width="700px">
       <pre style="white-space:pre-wrap;word-break:break-all;font-size:12px;max-height:400px;overflow:auto;background:#f5f5f5;padding:10px">{{ body.content }}</pre>
     </el-dialog>
+    <el-dialog v-model="batchResult.visible" title="批量重发结果" width="640px">
+      <el-table :data="batchResult.failed" size="small">
+        <el-table-column prop="id" label="ID" width="80"/>
+        <el-table-column prop="tradeNo" label="交易号" width="180" show-overflow-tooltip/>
+        <el-table-column prop="msg" label="失败原因" show-overflow-tooltip/>
+      </el-table>
+      <template #footer>
+        <el-button type="primary" @click="batchResult.visible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 <script setup>
@@ -60,6 +70,7 @@ let total = 0
 const body = reactive({ visible: false, title: '', content: '' })
 const selection = ref([])
 const batchLoading = ref(false)
+const batchResult = reactive({ visible: false, failed: [] })
 
 async function load(page) {
   const res = await request.get('/admin/logs/page', { params: { page, size: 20, success: 0, ...query } })
@@ -86,7 +97,9 @@ async function batchResend() {
     const res = await request.post('/admin/logs/batch-resend', { ids })
     const r = res.data
     if (r.fail > 0) {
-      ElMessage.warning(`完成：${r.ok} 成功 / ${r.fail} 失败，失败项见响应明细`)
+      batchResult.failed = (r.results || []).filter(i => !i.ok)
+      batchResult.visible = true
+      ElMessage.warning(`完成：${r.ok} 成功 / ${r.fail} 失败`)
     } else {
       ElMessage.success(`批量重发完成：${r.ok} 笔全部成功`)
     }
