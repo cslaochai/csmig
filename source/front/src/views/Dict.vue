@@ -30,6 +30,18 @@
           <el-button @click="reset">重置</el-button>
           <el-button type="success" plain @click="openCreate">新增</el-button>
         </el-form-item>
+        <el-form-item style="margin-left:auto;float:right">
+          <el-dropdown :loading="syncing" split-button type="primary" @command="syncDownload" @click="syncDownload('DRUG')">
+            同步医保目录
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="DRUG">药品目录（1301）</el-dropdown-item>
+                <el-dropdown-item command="DIAG">诊疗项目（1302）</el-dropdown-item>
+                <el-dropdown-item command="MAT">医用耗材（1303）</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </el-form-item>
       </el-form>
       <el-table :data="list" size="small">
         <el-table-column prop="id" label="ID" width="70"/>
@@ -152,6 +164,17 @@ async function remove(row) {
   await request.delete(`/admin/dict/${row.id}`)
   ElMessage.success('已删除')
   load(1); loadStats()
+}
+
+const syncing = ref(false)
+async function syncDownload(type) {
+  syncing.value = true
+  try {
+    const res = await request.post('/admin/dict/download', null, { params: { type } })
+    const r = res.data
+    ElMessage.success(`${TYPE_NAMES[type]}同步完成：共 ${r.total} 条，新增 ${r.imported}，更新 ${r.updated}`)
+    load(1); loadStats()
+  } catch (e) { /* 拦截器已提示 */ } finally { syncing.value = false }
 }
 
 onMounted(() => { load(1); loadStats() })

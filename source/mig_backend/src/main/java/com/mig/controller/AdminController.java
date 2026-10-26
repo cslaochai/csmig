@@ -3,6 +3,7 @@ package com.mig.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mig.config.GatewayConfig;
 import com.mig.common.Result;
@@ -476,6 +477,87 @@ public class AdminController {
         auditService.record(request, "ALERT_RULE", "rule-" + id,
                 row == null ? "删除告警规则 #" + id : "删除告警规则 " + row.getRuleType());
         return Result.success("删除成功", null);
+    }
+
+    // ---------- ⑫ 医保局目录下载同步（开发期对端=csmis，生产期=医保局平台） ----------
+
+    @PostMapping("/dict/download")
+    public Result<Map<String, Object>> dictDownload(@RequestParam String type, HttpServletRequest request) {
+        String msgType;
+        switch (type) {
+            case "DRUG" -> msgType = "1301";
+            case "DIAG" -> msgType = "1302";
+            case "MAT" -> msgType = "1303";
+            default -> throw new IllegalArgumentException("不支持的目录类型：" + type + "（DRUG/DIAG/MAT）");
+        }
+        // 走统一转发（落 mip_gateway_log，目录下载也留痕）；响应为医保局报文原文
+        String resp = forwardService.forward(msgType, "{\"catalogType\":\"" + type + "\"}");
+        List<Map<String, Object>> items = parseDownloadResp(resp, type);
+        // 该类型已有医保编码 → id 映射，做增量 upsert（his_code 留空，待院内目录导入后匹配）
+        List<DictCache> existing = dictMapper.selectList(new LambdaQueryWrapper<DictCache>()
+                .eq(DictCache::getDictType, type).isNotNull(DictCache::getMediCode));
+        Map<String, Long> codeToId = new HashMap<>();
+        for (DictCache d : existing) {
+            if (d.getMediCode() != null) codeToId.put(d.getMediCode(), d.getId());
+        }
+        int imported = 0, updated = 0;
+        for (Map<String, Object> it : items) {
+            Object ybObj = it.get("ybCode");
+            Object nameObj = it.get("name");
+            if (ybObj == null || nameObj == null) continue;
+            String ybCode = String.valueOf(ybObj);
+            String name = String.valueOf(nameObj);
+            Long id = codeToId.get(ybCode);
+            if (id != null) {
+                DictCache d = dictMapper.selectById(id);
+                if (d != null && !name.equals(d.getMediName())) {
+                    d.setMediName(name);
+                    dictMapper.updateById(d);
+                    updated++;
+                }
+            } else {
+                DictCache d = new DictCache();
+                d.setDictType(type);
+                d.setMediCode(ybCode);
+                d.setMediName(name);
+                d.setMatchStatus(0);
+                dictMapper.insert(d);
+                imported++;
+            }
+        }
+        auditService.record(request, "DICT_DOWNLOAD", "dict:" + type,
+                "医保局目录下载 " + type + "：共" + items.size() + "条，新增" + imported + " 更新" + updated);
+        Map<String, Object> r = new HashMap<>();
+        r.put("type", type);
+        r.put("total", items.size());
+        r.put("imported", imported);
+        r.put("updated", updated);
+        return Result.success(r);
+    }
+
+    /** 解析医保局目录下载响应：code=200 且 data.infcode=0，否则抛错 */
+    private List<Map<String, Object>> parseDownloadResp(String resp, String type) {
+        try {
+            JsonNode root = objectMapper.readTree(resp);
+            if (root.path("code").asInt(-1) != 200) {
+                throw new IllegalArgumentException("医保局目录下载失败：" + root.path("message").asText("未知错误"));
+            }
+            JsonNode data = root.path("data");
+            if (data.path("infcode").asInt(-1) != 0) {
+                throw new IllegalArgumentException("医保局目录下载失败：" + data.path("errMsg").asText("未知错误"));
+            }
+            JsonNode list = data.path("list");
+            if (!list.isArray()) return List.of();
+            List<Map<String, Object>> result = new java.util.ArrayList<>();
+            for (JsonNode n : list) {
+                result.add(objectMapper.convertValue(n, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}));
+            }
+            return result;
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("解析医保局目录下载响应失败：" + e.getMessage(), e);
+        }
     }
 
     private static String escapeCsv(String s) {
