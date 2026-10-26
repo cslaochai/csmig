@@ -1,1 +1,368 @@
-body { margin: 0; font-family: -apple-system, "Microsoft YaHei", sans-serif; background: #f0f2f5; }
+/* ============================================================
+   医院风设计令牌（与 cslk HIS 同源）
+   主色：医疗蓝  #1269B5   辅色：青绿 #0E9488
+   ============================================================ */
+:root {
+    /* Element Plus 主题色 */
+    --el-color-primary: #1269B5;
+    --el-color-primary-light-3: #4A92C9;
+    --el-color-primary-light-5: #79ABDB;
+    --el-color-primary-light-7: #A7C5EC;
+    --el-color-primary-light-8: #BCD3F2;
+    --el-color-primary-light-9: #E8F1FA;
+    --el-color-primary-dark-2: #0E528F;
+
+    /* 医院风语义色 */
+    --his-primary: #1269B5;
+    --his-primary-deep: #0B4F8A;
+    --his-teal: #0E9488;
+    --his-bg: #F2F7FB;
+    --his-card-border: #E3ECF5;
+    --his-shadow-sm: 0 1px 3px rgba(11, 79, 138, 0.06), 0 1px 2px rgba(11, 79, 138, 0.04);
+    --his-shadow-md: 0 4px 14px rgba(11, 79, 138, 0.08), 0 2px 4px rgba(11, 79, 138, 0.04);
+    --his-radius: 10px;
+    --his-header-bg: var(--his-primary-deep);
+    --his-sidebar-bg: #0A3D6B;
+    --his-chrome-shadow: 0 1px 0 rgba(255, 255, 255, 0.10), 0 2px 10px rgba(6, 45, 84, 0.16);
+
+    /* Element Plus 圆角统一 */
+    --el-border-radius-base: 6px;
+    --el-border-radius-small: 4px;
+    --el-border-radius-round: 18px;
+
+    /* 页面高度令牌 */
+    --his-header-h: 64px;
+    --his-page-pad: 12px;
+    --his-page-h: calc(100vh - var(--his-header-h) - var(--his-page-pad) * 2);
+}
+
+html,
+body {
+    font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', ui-sans-serif, system-ui, -apple-system,
+        BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--his-bg);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   全局滚动条（医院蓝细滚动条）
+   ============================================================ */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #C3D6E8;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #9FBEDB;
+}
+
+/* ---------- 顶栏 / 侧栏骨架 ---------- */
+.his-header {
+    background: var(--his-header-bg);
+    box-shadow: var(--his-chrome-shadow);
+}
+
+.his-sidebar {
+    background: var(--his-sidebar-bg);
+    box-shadow: 2px 0 10px rgba(6, 45, 84, 0.16);
+}
+
+/* ============================================================
+   Element Plus 组件精修（与 cslk style.css 同款）
+   ============================================================ */
+
+/* ---------- 卡片：圆角 + 柔和阴影 + 标题条 ---------- */
+.el-card {
+    border: 1px solid var(--his-card-border);
+    border-radius: var(--his-radius);
+    box-shadow: var(--his-shadow-sm);
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.el-card:hover {
+    box-shadow: var(--his-shadow-md);
+}
+
+.el-card__header {
+    border-bottom: 1px solid var(--his-card-border);
+    background: linear-gradient(180deg, #FAFDFF, #F4F9FD);
+    border-radius: var(--his-radius) var(--his-radius) 0 0;
+    font-weight: 600;
+    color: #134B77;
+}
+
+/* ---------- 表格：医院蓝表头 + 斑马纹 ---------- */
+.el-table {
+    --el-table-header-bg-color: #EAF3FB;
+    --el-table-header-text-color: #10517F;
+    --el-table-row-hover-bg-color: #F0F7FD;
+    --el-table-border-color: #E4EEF7;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.el-table th.el-table__cell {
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.el-table th.el-table__cell > .cell {
+    line-height: 1.5;
+}
+
+.el-table::before {
+    display: none;
+}
+
+/* ---------- 按钮 ---------- */
+.el-button {
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.el-button--primary {
+    background: linear-gradient(135deg, #1B77C4, #1269B5);
+    border: none;
+}
+
+.el-button--primary:hover,
+.el-button--primary:focus {
+    background: linear-gradient(135deg, #2B86D2, #1B77C4);
+}
+
+.el-button--primary:active {
+    background: #0E528F;
+}
+
+.el-button--primary.is-plain {
+    background: var(--el-color-primary-light-9);
+    border: 1px solid var(--el-color-primary-light-5);
+    box-shadow: none;
+    color: var(--el-color-primary);
+}
+
+.el-button--primary.is-plain:hover,
+.el-button--primary.is-plain:focus {
+    background: var(--el-color-primary);
+    border-color: var(--el-color-primary);
+    color: #fff;
+}
+
+.el-button--success {
+    background: linear-gradient(135deg, #16A394, #0E9488);
+    border: none;
+}
+
+.el-button--success:hover,
+.el-button--success:focus {
+    background: linear-gradient(135deg, #1BB5A5, #16A394);
+}
+
+/* ---------- 输入框 / 选择器 ---------- */
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+    border-radius: 6px;
+}
+
+.el-input__wrapper:hover,
+.el-select__wrapper:hover {
+    box-shadow: 0 0 0 1px #7FB2DF inset;
+}
+
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused {
+    box-shadow: 0 0 0 1.5px var(--his-primary) inset !important;
+}
+
+/* ---------- 弹窗 ---------- */
+.el-dialog {
+    border-radius: 14px;
+    box-shadow: 0 18px 50px rgba(9, 47, 84, 0.22);
+    overflow: hidden;
+    padding: 0;
+}
+
+.el-dialog__header {
+    background: #F6FAFE;
+    border-bottom: 1px solid var(--his-card-border);
+    border-radius: 14px 14px 0 0;
+    padding: 13px 52px 13px 22px;
+    margin-right: 0;
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    box-sizing: border-box;
+}
+
+.el-dialog__header::before {
+    content: '';
+    width: 4px;
+    height: 15px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, var(--his-primary), var(--his-teal));
+    flex: none;
+    margin-right: 9px;
+}
+
+.el-dialog__title {
+    color: #134B77;
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    line-height: 1.4;
+}
+
+.el-dialog__headerbtn {
+    top: 10px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    transition: background-color 0.15s ease;
+}
+
+.el-dialog__headerbtn .el-dialog__close {
+    color: #93A9BC;
+    font-size: 17px;
+}
+
+.el-dialog__headerbtn:hover {
+    background: #E5EFF9;
+}
+
+.el-dialog__headerbtn:hover .el-dialog__close {
+    color: var(--his-primary);
+}
+
+.el-dialog__body {
+    padding: 20px 24px;
+    color: #33546E;
+}
+
+.el-dialog__footer {
+    border-top: 1px solid var(--his-card-border);
+    padding: 14px 24px;
+    background: #FAFCFE;
+}
+
+/* ---------- 标签页 ---------- */
+.el-tabs__item {
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.el-tabs__item.is-active {
+    font-weight: 600;
+}
+
+.el-tabs--card > .el-tabs__header .el-tabs__item.is-active {
+    border-bottom-color: transparent;
+    background: var(--el-color-primary-light-9);
+    border-top: 2px solid var(--his-primary);
+}
+
+/* ---------- 标签 / 分页 ---------- */
+.el-tag {
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.el-pagination.is-background .el-pager li,
+.el-pagination.is-background .btn-prev,
+.el-pagination.is-background .btn-next {
+    border-radius: 6px;
+}
+
+.el-pagination.is-background .el-pager li.is-active {
+    background: var(--his-primary);
+}
+
+/* ---------- 标准两卡式列表页 ---------- */
+.query-card .el-form-item {
+    margin-bottom: 0;
+}
+
+.table-card .el-card__body {
+    padding: 0;
+}
+
+.list-footer {
+    padding: 12px 20px;
+}
+
+/* ---------- 描述列表 / 表单标题 ---------- */
+.el-descriptions__header {
+    margin-bottom: 12px;
+}
+
+.el-descriptions__title {
+    font-weight: 600;
+    color: #134B77;
+    position: relative;
+    padding-left: 10px;
+}
+
+.el-descriptions__title::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 14px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, var(--his-primary), var(--his-teal));
+}
+
+.el-form-item__label {
+    color: #33546E;
+    font-weight: 500;
+}
+
+/* ---------- 弹框内的表单分组标题（蓝竖条 + 加粗字） ---------- */
+.form-section-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #33546E;
+}
+
+.form-section-title::before {
+    content: '';
+    flex: none;
+    width: 4px;
+    height: 14px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, var(--his-primary), var(--his-teal));
+}
+
+/* ---------- 抽屉 / 消息 ---------- */
+.el-drawer__header {
+    color: #134B77;
+    font-weight: 600;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--his-card-border);
+    padding-bottom: 12px;
+}
+
+.el-message-box {
+    border-radius: 12px;
+}

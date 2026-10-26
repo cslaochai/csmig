@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <h2 style="margin:0 0 16px;font-size:18px;color:#333">接口监控</h2>
+  <div class="page-wrap">
+    <h2 class="page-title">接口监控</h2>
     <el-row :gutter="16">
       <el-col :span="6"><el-card><el-statistic title="今日总调用"><template #default>{{ stats.total }}</template></el-statistic></el-card></el-col>
       <el-col :span="6"><el-card><el-statistic title="成功率"><template #default>{{ stats.successRate }}%</template></el-statistic></el-card></el-col>
@@ -27,14 +27,16 @@
 </template>
 <script setup>
 import { reactive, onMounted } from 'vue'
-import axios from 'axios'
+import request from '@/api/request'
 const stats = reactive({ total:0, success:0, fail:0, successRate:100, avgCostMs:0, recent:[] })
 const rowClass = ({row}) => row.success===0 ? 'fail-row' : ''
 onMounted(async () => {
-  const { data } = await axios.get('/mip/admin/stats/today')
-  Object.assign(stats, data)
+  const res = await request.get('/admin/stats/today')
+  Object.assign(stats, res.data)
 })
 </script>
 <style>
+.page-title { margin:0 0 16px; font-size:18px; color:#134B77; font-weight:600; position:relative; padding-left:10px; }
+.page-title::before { content:''; position:absolute; left:0; top:50%; transform:translateY(-50%); width:4px; height:16px; border-radius:2px; background:linear-gradient(180deg,#1269B5,#0E9488); }
 :deep(.fail-row) td { background: #fef0f0 !important; }
 </style>

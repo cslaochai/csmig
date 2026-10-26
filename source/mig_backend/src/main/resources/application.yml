@@ -48,6 +48,18 @@ mip:
   crypto:
     enabled: false
     # TODO: 生产期配置CA证书路径、医保局公钥、SM4密钥等
+  # ===== 登录鉴权（对齐 cslk HIS：SM2 口令加密 + BCrypt + JWT） =====
+  security:
+    sm2:
+      # 16进制SM2私钥（64 hex字符）；留空则启动时临时生成一对（重启失效，多实例必须显式配置同一对）
+      private-key: ${MIP_SM2_PRIVATE_KEY:}
+      # 16进制SM2公钥（含04前缀，130 hex字符）；留空则从私钥推导
+      public-key: ${MIP_SM2_PUBLIC_KEY:}
+  jwt:
+    # JWT签名密钥（生产期必须通过环境变量覆盖）
+    secret: ${MIP_JWT_SECRET:mip-gateway-jwt-secret-change-me-in-prod-2026}
+    # 会话有效期（毫秒），默认24小时
+    expiration: ${MIP_JWT_EXPIRATION:86400000}
 
 logging:
   level:

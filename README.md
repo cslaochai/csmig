@@ -22,13 +22,33 @@ csmis医保局端mock（端口8090, context-path /mss）  ← 开发期上游
 ## 技术栈
 
 Spring Boot 3.2.5 / Java 21 / MyBatis-Plus / MySQL（库：mip_gateway）
+前端：Vue 3 / Vite / Element Plus（管理后台，与 cslk HIS 同风格）
+
+## 管理后台与登录鉴权
+
+- 管理端（前端：`source/front`，开发代理 /mip → 8091；后端：`source/mig_backend`，context-path /mip）
+- 登录鉴权与 cslk HIS 同方案：**SM2 国密口令加密传输 → BCrypt 存密 → JWT 会话**（24h）
+  - `/mip/auth/publicKey` 取 SM2 公钥；`/mip/auth/login` 登录签发 JWT
+  - 管理接口 `/mip/admin/**` 需 `Authorization: Bearer <token>`，未登录返回 401
+  - HIS 网关转发 `/mip/gateway/**`、`/mip/insure/**` 为机器对机器，**不鉴权**
+- 默认账号：`admin / 123456`（首次启动由 DataInitializer 自动创建，请登录后尽快修改）
+- 生产期建议通过环境变量固化密钥：
+  - `MIP_SM2_PRIVATE_KEY` / `MIP_SM2_PUBLIC_KEY`（多实例必须显式配置同一对 SM2 密钥，否则重启后登录失败）
+  - `MIP_JWT_SECRET`（JWT 签名密钥）
 
 ## 快速启动
 
 ```bash
-cd source/back_end_mip
+# 后端
+cd source/mig_backend
 mvn spring-boot:run
 # 启动后监听 http://localhost:8091/mip
+
+# 前端（管理后台）
+cd source/front
+npm install
+npm run dev          # http://localhost:5174 → 登录页
+npm run build        # 构建产物 dist/（可部署到后端 static 或独立站点）
 ```
 
 ## HIS侧配置切换
