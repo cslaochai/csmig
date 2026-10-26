@@ -1,15 +1,19 @@
 package com.mig.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mig.config.GatewayConfig;
 import com.mig.common.Result;
+import com.mig.entity.DictCache;
 import com.mig.entity.GatewayLog;
+import com.mig.mapper.DictCacheMapper;
 import com.mig.mapper.GatewayLogMapper;
 import com.mig.service.GatewayForwardService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -21,6 +25,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -35,9 +40,13 @@ import java.util.Map;
 public class AdminController {
 
     private final GatewayLogMapper logMapper;
+    private final DictCacheMapper dictMapper;
     private final GatewayForwardService forwardService;
     private final GatewayConfig.UpstreamProps upstreamProps;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Value("${mip.crypto.enabled:false}")
+    private boolean cryptoEnabled;
 
     // ---------- ① 监控面板：今日统计 ----------
 
@@ -154,6 +163,133 @@ public class AdminController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=recon-" + date + ".csv")
                 .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
                 .body(resource);
+    }
+
+    // ---------- ⑥ 异常告警：今日失败总览 ----------
+
+    @GetMapping("/alerts/summary")
+    public Result<Map<String, Object>> alertsSummary() {
+        LocalDateTime dayStart = LocalDate.now().atStartOfDay();
+        Long todayTotal = logMapper.selectCount(new LambdaQueryWrapper<GatewayLog>()
+                .ge(GatewayLog::getCreatedAt, dayStart));
+        Long todayFail = logMapper.selectCount(new LambdaQueryWrapper<GatewayLog>()
+                .eq(GatewayLog::getSuccess, 0).ge(GatewayLog::getCreatedAt, dayStart));
+        // 今日失败按报文类型分布
+        List<Map<String, Object>> byType = logMapper.selectMaps(new QueryWrapper<GatewayLog>()
+                .select("msg_type AS msgType", "COUNT(*) AS cnt")
+                .eq("success", 0).ge("created_at", dayStart)
+                .groupBy("msg_type").orderByDesc("cnt"));
+        // 最近24小时失败按小时分布
+        LocalDateTime hStart = LocalDateTime.now().minusHours(24);
+        List<Map<String, Object>> hourly = logMapper.selectMaps(new QueryWrapper<GatewayLog>()
+                .select("DATE_FORMAT(created_at, '%H') AS hour", "COUNT(*) AS cnt")
+                .eq("success", 0).ge("created_at", hStart)
+                .groupBy("hour").orderByAsc("hour"));
+        // 最近10条失败明细
+        List<GatewayLog> recent = logMapper.selectList(new LambdaQueryWrapper<GatewayLog>()
+                .eq(GatewayLog::getSuccess, 0).orderByDesc(GatewayLog::getId).last("LIMIT 10"));
+        Map<String, Object> r = new HashMap<>();
+        r.put("todayTotal", todayTotal);
+        r.put("todayFail", todayFail);
+        r.put("failRate", todayTotal == null || todayTotal == 0
+                ? 0 : Math.round(todayFail * 1000.0 / todayTotal) / 10.0);
+        r.put("byType", byType);
+        r.put("hourly", hourly);
+        r.put("recent", recent);
+        return Result.success(r);
+    }
+
+    // ---------- ⑦ 结算汇总：近N日按 日×报文类型 聚合 ----------
+
+    @GetMapping("/summary/daily")
+    public Result<Map<String, Object>> summaryDaily(@RequestParam(defaultValue = "7") int days) {
+        int d = Math.max(1, Math.min(days, 30));
+        LocalDateTime from = LocalDate.now().minusDays(d - 1L).atStartOfDay();
+        List<Map<String, Object>> rows = logMapper.selectMaps(new QueryWrapper<GatewayLog>()
+                .select("DATE(created_at) AS day", "msg_type AS msgType", "success AS success", "COUNT(*) AS cnt")
+                .ge("created_at", from)
+                .groupBy("day", "msg_type", "success")
+                .orderByAsc("day"));
+        // { day: { msgType: [total, success, fail] } }
+        Map<String, Map<String, long[]>> byDay = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            String day = String.valueOf(row.get("day"));
+            String type = String.valueOf(row.get("msgType"));
+            int success = ((Number) row.get("success")).intValue();
+            long cnt = ((Number) row.get("cnt")).longValue();
+            long[] arr = byDay.computeIfAbsent(day, k -> new HashMap<>())
+                    .computeIfAbsent(type, k -> new long[3]);
+            arr[0] += cnt;
+            if (success == 1) arr[1] += cnt;
+            else arr[2] += cnt;
+        }
+        Map<String, Object> r = new HashMap<>();
+        r.put("days", d);
+        r.put("byDay", byDay);
+        return Result.success(r);
+    }
+
+    // ---------- ⑧ 密钥与证书：国密加解密开关状态 ----------
+
+    @GetMapping("/crypto/status")
+    public Result<Map<String, Object>> cryptoStatus() {
+        Map<String, Object> r = new HashMap<>();
+        r.put("enabled", cryptoEnabled);
+        r.put("algo", "SM2签名 + SM4加密");
+        r.put("mode", cryptoEnabled ? "生产模式（加签加密）" : "开发模式（明文透传）");
+        r.put("note", "生产期需配置CA证书、医保局公钥、SM4密钥（见 application.yml 的 mip.crypto）");
+        return Result.success(r);
+    }
+
+    // ---------- ⑨ 医保目录缓存管理（开发期本地维护，生产期由医保局目录下载同步） ----------
+
+    @GetMapping("/dict/page")
+    public Result<Map<String, Object>> dictPage(@RequestParam(defaultValue = "1") int page,
+                                                @RequestParam(defaultValue = "20") int size,
+                                                @RequestParam(required = false) String dictType,
+                                                @RequestParam(required = false) String keyword,
+                                                @RequestParam(required = false) Integer matchStatus) {
+        LambdaQueryWrapper<DictCache> q = new LambdaQueryWrapper<>();
+        if (dictType != null && !dictType.isBlank()) q.eq(DictCache::getDictType, dictType);
+        if (matchStatus != null) q.eq(DictCache::getMatchStatus, matchStatus);
+        if (keyword != null && !keyword.isBlank()) {
+            q.and(w -> w.like(DictCache::getHisCode, keyword).or()
+                    .like(DictCache::getHisName, keyword).or()
+                    .like(DictCache::getMediCode, keyword).or()
+                    .like(DictCache::getMediName, keyword));
+        }
+        q.orderByDesc(DictCache::getUpdatedAt);
+        Page<DictCache> p = dictMapper.selectPage(new Page<>(page, size), q);
+        Map<String, Object> r = new HashMap<>();
+        r.put("total", p.getTotal());
+        r.put("list", p.getRecords());
+        return Result.success(r);
+    }
+
+    @GetMapping("/dict/stats")
+    public Result<List<Map<String, Object>>> dictStats() {
+        return Result.success(dictMapper.selectMaps(new QueryWrapper<DictCache>()
+                .select("dict_type AS dictType", "COUNT(*) AS total",
+                        "COALESCE(SUM(match_status = 1), 0) AS matched")
+                .groupBy("dict_type")));
+    }
+
+    @PostMapping("/dict")
+    public Result<Void> dictCreate(@RequestBody DictCache dict) {
+        if (dict.getDictType() == null || dict.getDictType().isBlank()
+                || dict.getHisCode() == null || dict.getHisCode().isBlank()
+                || dict.getHisName() == null || dict.getHisName().isBlank()) {
+            throw new IllegalArgumentException("目录类型、院内编码、院内名称为必填");
+        }
+        dict.setMatchStatus(dict.getMatchStatus() == null ? 0 : dict.getMatchStatus());
+        dictMapper.insert(dict);
+        return Result.success("新增成功", null);
+    }
+
+    @DeleteMapping("/dict/{id}")
+    public Result<Void> dictDelete(@PathVariable Long id) {
+        dictMapper.deleteById(id);
+        return Result.success("删除成功", null);
     }
 
     private static String escapeCsv(String s) {

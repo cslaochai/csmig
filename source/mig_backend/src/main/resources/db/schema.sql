@@ -28,3 +28,18 @@ CREATE TABLE IF NOT EXISTS mip_sys_user (
     PRIMARY KEY (id),
     UNIQUE KEY uk_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='前置机管理用户';
+
+-- 医保目录缓存：院内目录 ↔ 医保目录匹配关系（药品/诊疗/耗材/体外诊断试剂），开发期本地维护，生产期对接医保局目录下载接口
+CREATE TABLE IF NOT EXISTS mip_dict_cache (
+    id           BIGINT       NOT NULL AUTO_INCREMENT,
+    dict_type    VARCHAR(16)  NOT NULL COMMENT '目录类型：DRUG-药品 DIAG-诊疗项目 MAT-医用耗材 IVD-体外诊断试剂',
+    his_code     VARCHAR(64)  NOT NULL COMMENT '院内编码',
+    his_name     VARCHAR(200) NOT NULL COMMENT '院内名称',
+    medi_code    VARCHAR(64)  NULL COMMENT '医保编码',
+    medi_name    VARCHAR(200) NULL COMMENT '医保名称',
+    match_status TINYINT      NOT NULL DEFAULT 0 COMMENT '匹配状态：0-未匹配 1-已匹配',
+    updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_type_code (dict_type, his_code),
+    KEY idx_type_status (dict_type, match_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='医保目录缓存';
