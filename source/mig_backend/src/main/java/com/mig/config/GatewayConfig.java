@@ -27,8 +27,9 @@ public class GatewayConfig {
     @Bean
     public GatewayForwardService gatewayForwardService(RestClient upstreamRestClient,
                                                        com.mig.mapper.GatewayLogMapper logMapper,
-                                                       UpstreamProps props) {
-        return new GatewayForwardService(upstreamRestClient, logMapper, props);
+                                                       UpstreamProps props,
+                                                       com.mig.config.CryptoProperties cryptoProps) {
+        return new GatewayForwardService(upstreamRestClient, logMapper, props, cryptoProps);
     }
 
     public static class UpstreamProps {

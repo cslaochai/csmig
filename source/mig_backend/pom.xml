@@ -6,7 +6,7 @@
 
     <!--
       医保结算前置系统（csmig）：HIS ↔ 医保局平台之间的转发层。
-      开发期透传 csmis（8090/mss，医保局端mock）；生产期在此层加 SM2/SM4 加密签名 + CA证书 + 专线。
+      生产期在此层加 SM2/SM4 加密签名 + CA证书 + 专线。
       独立工程，不继承、不聚合 his-backend，单独构建、单独启动。
     -->
     <parent>
@@ -21,7 +21,7 @@
     <version>1.0.0</version>
     <packaging>jar</packaging>
     <name>mig-backend</name>
-    <description>医保结算前置系统（csmig）：接收HIS请求，加签加密后转发医保局平台，响应解密返回。开发期透传csmis。</description>
+    <description>医保结算前置系统（csmig）：接收HIS请求，加签加密后转发医保局平台，响应解密返回。</description>
 
     <properties>
         <java.version>21</java.version>

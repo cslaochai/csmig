@@ -44,10 +44,18 @@ mip:
     base-url: ${MIP_UPSTREAM_URL:http://localhost:8090/mss}
     connect-timeout-ms: 5000
     read-timeout-ms: 30000
-  # 加签加密开关（开发期false=透传明文；生产期true=加SM2签名+SM4加密）
+  # 加签加密开关（true=SM2签名+SM4加密+CSSSL证书双向验签；false=透传明文，开发期）
   crypto:
-    enabled: false
-    # TODO: 生产期配置CA证书路径、医保局公钥、SM4密钥等
+    enabled: ${MIP_CRYPTO_ENABLED:true}
+    # 院内段（HIS↔前置）SM4 会话密钥，与 HIS 侧 his.insurance.crypto.sm4-key 一致
+    sm4-key-his: ${MIP_SM4_KEY_HIS:d4ed4bcc79219747db32bd6fbcd97fe8}
+    # 局端段（前置↔医保局）SM4 会话密钥，与医保局端 jinb.crypto.sm4-key 一致
+    sm4-key-mss: ${MIP_SM4_KEY_MSS:20a09e0072cce895a325a43684147195}
+    private-key: classpath:crypto/csmig-private.pem
+    cert-chain: classpath:crypto/csmig-cert.pem
+    root-ca: classpath:crypto/root-ca.pem
+    sub-ca: classpath:crypto/sub-ca.pem
+    clock-skew-seconds: 300
   # ===== 登录鉴权（对齐 cslk HIS：SM2 口令加密 + BCrypt + JWT） =====
   security:
     sm2:
