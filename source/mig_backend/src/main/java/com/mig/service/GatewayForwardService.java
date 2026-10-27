@@ -108,6 +108,37 @@ public class GatewayForwardService {
         return bizOut;
     }
 
+    /**
+     * 日对账 GET 转发：HIS 侧 queryDayBill 不加封、局端侧 /gateway/dayBill 也是明文 GET，
+     * 全程不进国密信封（对账数据按账期走专线/内网，生产再加 TLS）。失败不封信封原样回结构化 JSON，
+     * HIS 侧按 code!=200 感知。
+     */
+    public String forwardDayBill(String billDate) {
+        long start = System.currentTimeMillis();
+        String response = null;
+        int success = 0;
+        String errMsg = null;
+        try {
+            response = upstream.get()
+                    .uri(uriBuilder -> uriBuilder.path("/gateway/dayBill")
+                            .queryParam("billDate", billDate).build())
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .body(String.class);
+            success = isSuccess(response) ? 1 : 0;
+            if (success == 0) {
+                errMsg = extractErrMsg(response);
+            }
+            return response;
+        } catch (RestClientException e) {
+            errMsg = "上游平台连接失败：" + e.getMessage();
+            log.error("[前置机] 日对账转发失败 billDate={} err={}", billDate, e.getMessage());
+            return "{\"code\":500,\"message\":\"" + escape(errMsg) + "\",\"data\":null}";
+        } finally {
+            saveLog(MSG_DAY_BILL, "-", success, (int) (System.currentTimeMillis() - start), "-", response, errMsg);
+        }
+    }
+
     /** 医保局端路径：参保查询走 /insure/person/query（csmis 实际路由），其余走 /gateway/{msgType} */
     private String upstreamPath(String msgType) {
         if (MSG_INSURE_QUERY.equals(msgType)) {
