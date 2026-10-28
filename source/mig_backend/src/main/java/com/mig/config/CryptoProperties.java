@@ -6,7 +6,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 
 /**
- * 前置机报文安全配置（mip.crypto.*）。
+ * 前置机报文安全配置（mig.crypto.*）。
  *
  * <p>前置机是院内/局端两条安全域的边界：
  * <ul>
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
  */
 @Data
 @Component
-@ConfigurationProperties(prefix = "mip.crypto")
+@ConfigurationProperties(prefix = "mig.crypto")
 public class CryptoProperties {
 
     /** 国密开关：false=明文透传（开发期）；true=双向验签 + SM4 加密转发 */

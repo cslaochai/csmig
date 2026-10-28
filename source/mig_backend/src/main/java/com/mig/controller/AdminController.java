@@ -490,7 +490,7 @@ public class AdminController {
             case "MAT" -> msgType = "1303";
             default -> throw new IllegalArgumentException("不支持的目录类型：" + type + "（DRUG/DIAG/MAT）");
         }
-        // 走统一转发（落 mip_gateway_log，目录下载也留痕）；响应为医保局报文原文
+        // 走统一转发（落 mig_gateway_log，目录下载也留痕）；响应为医保局报文原文
         String resp = forwardService.forward(msgType, "{\"catalogType\":\"" + type + "\"}");
         List<Map<String, Object>> items = parseDownloadResp(resp, type);
         // 该类型已有医保编码 → id 映射，做增量 upsert（his_code 留空，待院内目录导入后匹配）

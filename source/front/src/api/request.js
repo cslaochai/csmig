@@ -1,9 +1,9 @@
 import axios from 'axios'
 import {ElMessage} from 'element-plus'
 
-// 前置机后端 context-path 为 /mip（vite 代理 /mip → http://localhost:8091）
+// 前置机后端 context-path 为 /mig（vite 代理 /mig → http://localhost:8091）
 const request = axios.create({
-    baseURL: '/mip',
+    baseURL: '/mig',
     timeout: 30000,
     headers: {
         'Content-Type': 'application/json'

@@ -11,7 +11,7 @@ services:
       TZ: Asia/Shanghai
       JAVA_OPTS: -Xms384m -Xmx1g -XX:+UseG1GC -Duser.timezone=Asia/Shanghai
     ports:
-      # 宿主 8011 → 容器 8091，context-path /mip
+      # 宿主 8011 → 容器 8091，context-path /mig
       - "8011:8091"
     # MySQL（宿主机进程）与 csmis 后端（宿主 8010）都走 host.docker.internal 回到宿主
     extra_hosts:

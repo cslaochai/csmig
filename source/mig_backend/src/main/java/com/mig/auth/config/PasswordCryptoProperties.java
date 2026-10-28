@@ -5,11 +5,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 /**
- * 登录口令传输加密配置（yml 的 mip.security.sm2.* 段，对齐 cslk 的 his.security.sm2.*）。
+ * 登录口令传输加密配置（yml 的 mig.security.sm2.* 段，对齐 cslk 的 his.security.sm2.*）。
  */
 @Data
 @Component
-@ConfigurationProperties(prefix = "mip.security.sm2")
+@ConfigurationProperties(prefix = "mig.security.sm2")
 public class PasswordCryptoProperties {
 
     /**

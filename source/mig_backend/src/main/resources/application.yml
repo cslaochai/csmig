@@ -1,9 +1,11 @@
 server:
   port: 8091
   servlet:
-    context-path: /mip
+    context-path: /mig
 
 spring:
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   application:
     name: mig-backend
   jackson:
@@ -13,9 +15,6 @@ spring:
       write-dates-as-timestamps: false
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${MIP_DB_URL:jdbc:mysql://192.168.88.132:3306/mip_gateway?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true}
-    username: ${MIP_DB_USERNAME:xz_feng}
-    password: ${MIP_DB_PASSWORD:Feng123456!}
     hikari:
       connection-timeout: 30000
       maximum-pool-size: 10
@@ -39,36 +38,23 @@ mybatis-plus:
 
 # ===== 前置机业务参数 =====
 mip:
-  # 医保局平台（开发期=csmis mock；生产期=真实医保局地址）
   upstream:
-    base-url: ${MIP_UPSTREAM_URL:http://localhost:8090/mss}
     connect-timeout-ms: 5000
     read-timeout-ms: 30000
   # 加签加密开关（true=SM2签名+SM4加密+CSSSL证书双向验签；false=透传明文，开发期）
   crypto:
     enabled: ${MIP_CRYPTO_ENABLED:true}
-    # 院内段（HIS↔前置）SM4 会话密钥，与 HIS 侧 his.insurance.crypto.sm4-key 一致
-    sm4-key-his: ${MIP_SM4_KEY_HIS:d4ed4bcc79219747db32bd6fbcd97fe8}
-    # 局端段（前置↔医保局）SM4 会话密钥，与医保局端 jinb.crypto.sm4-key 一致
-    sm4-key-mss: ${MIP_SM4_KEY_MSS:20a09e0072cce895a325a43684147195}
     private-key: classpath:crypto/csmig-private.pem
     cert-chain: classpath:crypto/csmig-cert.pem
     root-ca: classpath:crypto/root-ca.pem
     sub-ca: classpath:crypto/sub-ca.pem
     clock-skew-seconds: 300
   # ===== 登录鉴权（对齐 cslk HIS：SM2 口令加密 + BCrypt + JWT） =====
-  security:
-    sm2:
-      # 16进制SM2私钥（64 hex字符）；留空则启动时临时生成一对（重启失效，多实例必须显式配置同一对）
-      private-key: ${MIP_SM2_PRIVATE_KEY:}
-      # 16进制SM2公钥（含04前缀，130 hex字符）；留空则从私钥推导
-      public-key: ${MIP_SM2_PUBLIC_KEY:}
   jwt:
-    # JWT签名密钥（生产期必须通过环境变量覆盖）
-    secret: ${MIP_JWT_SECRET:mip-gateway-jwt-secret-change-me-in-prod-2026}
-    # 会话有效期（毫秒），默认24小时
-    expiration: ${MIP_JWT_EXPIRATION:86400000}
+    # 会话有效期（毫秒），默认24小时；签名密钥属环境项，落 profile 文件
+    expiration: 86400000
 
+# 业务日志级别两环境同值，声明一次；dev 要开 SQL 调试就在 application-dev.yml 里覆盖成 debug
 logging:
   level:
-    com.mip: debug
+    com.mip: info
