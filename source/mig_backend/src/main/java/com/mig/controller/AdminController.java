@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mig.config.CryptoProperties;
 import com.mig.config.GatewayConfig;
 import com.mig.common.Result;
 import com.mig.entity.AlertRule;
@@ -20,7 +21,6 @@ import com.mig.service.GatewayForwardService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -53,10 +53,8 @@ public class AdminController {
     private final AuditService auditService;
     private final GatewayForwardService forwardService;
     private final GatewayConfig.UpstreamProps upstreamProps;
+    private final CryptoProperties cryptoProperties;
     private final ObjectMapper objectMapper = new ObjectMapper();
-
-    @Value("${mip.crypto.enabled:false}")
-    private boolean cryptoEnabled;
 
     // ---------- ① 监控面板：今日统计 ----------
 
@@ -348,10 +346,10 @@ public class AdminController {
     @GetMapping("/crypto/status")
     public Result<Map<String, Object>> cryptoStatus() {
         Map<String, Object> r = new HashMap<>();
-        r.put("enabled", cryptoEnabled);
+        r.put("enabled", cryptoProperties.isEnabled());
         r.put("algo", "SM2签名 + SM4加密");
-        r.put("mode", cryptoEnabled ? "生产模式（加签加密）" : "开发模式（明文透传）");
-        r.put("note", "生产期需配置CA证书、医保局公钥、SM4密钥（见 application.yml 的 mip.crypto）");
+        r.put("mode", cryptoProperties.isEnabled() ? "生产模式（加签加密）" : "开发模式（明文透传）");
+        r.put("note", "生产期需配置CA证书、医保局公钥、SM4密钥（见 application.yml 的 mig.crypto）");
         return Result.success(r);
     }
 

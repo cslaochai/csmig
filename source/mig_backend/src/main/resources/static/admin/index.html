@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>csmip 医保前置系统</title>
+<title>csmig 医保前置系统</title>
 <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -57,7 +57,7 @@
 <div id="app">
   <div class="layout">
     <div class="sidebar">
-      <div class="logo">csmip 前置系统</div>
+      <div class="logo">csmig 前置系统</div>
       <div class="menu-item active" @click="tab='monitor'">接口监控</div>
       <div class="menu-item" @click="tab='logs'">交易流水</div>
       <div class="menu-item" @click="tab='config'">配置 & 对账</div>
@@ -158,7 +158,7 @@ const { createApp, ref, reactive, computed, onMounted } = Vue;
 const api = axios; // 同源，直接用全局axios CDN
 // axios 没在CDN里？直接用fetch
 async function http(url, opts={}) {
-  const r = await fetch('/mip' + url, {
+  const r = await fetch('/mig' + url, {
     method: opts.method || 'GET',
     headers: {'Content-Type':'application/json'},
     body: opts.body ? JSON.stringify(opts.body) : undefined
@@ -208,7 +208,7 @@ createApp({
       loadStats(); loadLogs(1);
     }
     function exportCsv() {
-      window.location.href = '/mip/admin/recon/export?date=' + exportDate.value;
+      window.location.href = '/mig/admin/recon/export?date=' + exportDate.value;
     }
 
     onMounted(() => { loadStats(); loadLogs(1); loadConfig(); });

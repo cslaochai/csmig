@@ -37,13 +37,13 @@ mybatis-plus:
       id-type: AUTO
 
 # ===== 前置机业务参数 =====
-mip:
+mig:
   upstream:
     connect-timeout-ms: 5000
     read-timeout-ms: 30000
   # 加签加密开关（true=SM2签名+SM4加密+CSSSL证书双向验签；false=透传明文，开发期）
   crypto:
-    enabled: ${MIP_CRYPTO_ENABLED:true}
+    enabled: ${MIG_CRYPTO_ENABLED:true}
     private-key: classpath:crypto/csmig-private.pem
     cert-chain: classpath:crypto/csmig-cert.pem
     root-ca: classpath:crypto/root-ca.pem
@@ -57,4 +57,4 @@ mip:
 # 业务日志级别两环境同值，声明一次；dev 要开 SQL 调试就在 application-dev.yml 里覆盖成 debug
 logging:
   level:
-    com.mip: info
+    com.mig: info

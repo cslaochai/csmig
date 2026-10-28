@@ -12,7 +12,7 @@ export default defineConfig({
   server: {
     port: 5174,
     proxy: {
-      '/mip': { target: 'http://localhost:8091', changeOrigin: true }
+      '/mig': { target: 'http://localhost:8091', changeOrigin: true }
     }
   }
 })

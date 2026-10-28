@@ -124,7 +124,7 @@ public class PasswordCipherService {
             String[] pair = generateKeyPair();
             this.privateKeyHex = pair[0];
             this.publicKeyHex = pair[1];
-            log.warn("[登录加密] 未配置 mip.security.sm2.private-key，已临时生成一对 SM2 密钥（重启即失效）。"
+            log.warn("[登录加密] 未配置 mig.security.sm2.private-key，已临时生成一对 SM2 密钥（重启即失效）。"
                     + "多实例部署必须显式配置同一对，否则会出现随机的登录失败。");
         } else {
             this.privateKeyHex = prv.toLowerCase();

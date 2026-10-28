@@ -5,7 +5,7 @@ services:
     image: csmig-backend:local
     container_name: csmig-backend
     restart: unless-stopped
-    # 连接串与口令全部来自同目录 .env（该文件不入库），application.yml 里只有 ${MIP_*:} 占位
+    # 连接串与口令全部来自同目录 .env（该文件不入库），application.yml 里只有 ${MIG_*:} 占位
     env_file: .env
     environment:
       TZ: Asia/Shanghai
@@ -23,7 +23,7 @@ services:
       retries: 60
       start_period: 90s
     networks:
-      - mip
+      - mig
 
   csmig-front:
     build:
@@ -37,8 +37,8 @@ services:
       csmig-backend:
         condition: service_healthy
     networks:
-      - mip
+      - mig
 
 networks:
-  mip:
+  mig:
     driver: bridge

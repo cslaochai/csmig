@@ -11,7 +11,7 @@ import org.springframework.web.client.RestClient;
 public class GatewayConfig {
 
     @Bean
-    @ConfigurationProperties(prefix = "mip.upstream")
+    @ConfigurationProperties(prefix = "mig.upstream")
     public UpstreamProps upstreamProps() {
         return new UpstreamProps();
     }

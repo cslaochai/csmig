@@ -20,7 +20,7 @@ csmis医保局端mock（端口8090, context-path /mss）  ← 开发期上游
 
 ## 技术栈
 
-Spring Boot 3.2.5 / Java 21 / MyBatis-Plus / MySQL（库：mig_gateway）
+Spring Boot 3.2.5 / Java 21 / MyBatis-Plus / MySQL（库：mip_gateway）
 前端：Vue 3 / Vite / Element Plus（管理后台，与 cslk HIS 同风格）
 
 ## 管理后台与登录鉴权
@@ -31,9 +31,10 @@ Spring Boot 3.2.5 / Java 21 / MyBatis-Plus / MySQL（库：mig_gateway）
   - 管理接口 `/mig/admin/**` 需 `Authorization: Bearer <token>`，未登录返回 401
   - HIS 网关转发 `/mig/gateway/**`、`/mig/insure/**` 为机器对机器，**不鉴权**
 - 默认账号：`admin / 123456`（首次启动由 DataInitializer 自动创建，请登录后尽快修改）
-- 生产期建议通过环境变量固化密钥：
-  - `MIP_SM2_PRIVATE_KEY` / `MIP_SM2_PUBLIC_KEY`（多实例必须显式配置同一对 SM2 密钥，否则重启后登录失败）
-  - `MIP_JWT_SECRET`（JWT 签名密钥）
+- 密钥口径（与 cslk HIS 一致）：
+  - SM2 登录密钥对：16 进制私钥直接写死在 `application-pro.yml`（dev 写 dev 文件，均不入库），重启不失效
+  - `MIG_JWT_SECRET`（JWT 签名密钥，生产由 .env 注入；不填则 token 签发/校验不可用）
+  - 其余 env 清单见 `docker/.env.example`（MIG_DB_* / MIG_UPSTREAM_URL / MIG_SM4_KEY_HIS / MIG_SM4_KEY_MSS / MIG_CRYPTO_ENABLED）
 
 ## 快速启动
 

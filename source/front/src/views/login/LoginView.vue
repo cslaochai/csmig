@@ -7,7 +7,7 @@
           <img alt="医保结算前置系统" class="brand-logo" src="../../assets/main_logo.png"/>
         </div>
         <h1 class="brand-title">医保结算前置系统</h1>
-        <p class="brand-sub">MIP GATEWAY · MEDICAL INSURANCE PRE-SETTLEMENT</p>
+        <p class="brand-sub">MIG GATEWAY · MEDICAL INSURANCE PRE-SETTLEMENT</p>
 
         <ul class="brand-features">
           <li class="feature-item">

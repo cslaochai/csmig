@@ -1,10 +1,11 @@
 package com.mig.auth.util;
 
+import com.mig.auth.config.JwtProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -17,16 +18,13 @@ import java.util.Map;
  * JWT 工具类（与 cslk HIS 的 JwtUtils 同方案：jjwt，claims 带 userId/username/currentRole）。
  */
 @Component
+@RequiredArgsConstructor
 public class JwtUtils {
 
-    @Value("${mip.jwt.secret}")
-    private String secret;
-
-    @Value("${mip.jwt.expiration}")
-    private long expiration;
+    private final JwtProperties jwtProperties;
 
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        return Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -42,7 +40,7 @@ public class JwtUtils {
                 .claims(claims)
                 .subject(username)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expiration))
+                .expiration(new Date(System.currentTimeMillis() + jwtProperties.getExpiration()))
                 .signWith(getSigningKey())
                 .compact();
     }
