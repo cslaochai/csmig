@@ -1,93 +1,112 @@
 <template>
-  <div class="login-container">
-    <!-- 顶部横幅：公司 logo + 医院名（与应用主框架 Header 同风格） -->
-    <header class="login-banner">
-      <div class="login-banner-logo-wrap">
-        <img alt="长沙市麓康医院" class="login-banner-logo" src="../../assets/sidebar_logo.png"/>
+  <div class="login-page">
+    <!-- 左侧品牌区：深蓝渐变 + 系统定位 -->
+    <aside class="brand-panel">
+      <div class="brand-inner">
+        <div class="brand-logo-wrap">
+          <img alt="医保结算前置系统" class="brand-logo" src="../../assets/main_logo.png"/>
+        </div>
+        <h1 class="brand-title">医保结算前置系统</h1>
+        <p class="brand-sub">MIP GATEWAY · MEDICAL INSURANCE PRE-SETTLEMENT</p>
+
+        <ul class="brand-features">
+          <li class="feature-item">
+            <span class="feature-icon"><el-icon><Lock/></el-icon></span>
+            <span class="feature-text">国密加解密 · 证书认证</span>
+          </li>
+          <li class="feature-item">
+            <span class="feature-icon"><el-icon><Document/></el-icon></span>
+            <span class="feature-text">交易留痕 · 全量日志审计</span>
+          </li>
+          <li class="feature-item">
+            <span class="feature-icon"><el-icon><Odometer/></el-icon></span>
+            <span class="feature-text">实时监控 · 异常告警</span>
+          </li>
+          <li class="feature-item">
+            <span class="feature-icon"><el-icon><Tickets/></el-icon></span>
+            <span class="feature-text">对账结算 · 目录缓存</span>
+          </li>
+        </ul>
       </div>
-      <span class="login-banner-name">长沙市麓康医院</span>
-    </header>
+      <p class="brand-footer">HIS ↔ 医保局平台 转发层 + 管理后台</p>
+    </aside>
 
-    <div class="login-card">
-      <!-- 院徽 + 院名 -->
-      <div class="login-header">
-        <img alt="长沙市麓康医院" class="hospital-logo" src="../../assets/main_logo.png"/>
-        <h1 class="hospital-name">长沙市麓康医院</h1>
-        <p class="hospital-sub">医保结算前置平台 · MIP GATEWAY</p>
-      </div>
+    <!-- 右侧登录区 -->
+    <main class="login-main">
+      <div class="login-card">
+        <h2 class="login-title">账号登录</h2>
+        <p class="login-desc">请使用系统管理员分配的账号登录</p>
 
-      <div class="login-divider"></div>
-
-      <!-- 登录表单 -->
-      <el-form :model="loginForm" @keyup.enter="handleLogin">
-        <el-form-item>
-          <el-input
-              v-model="loginForm.username"
-              :prefix-icon="User"
-              class="login-input"
-              placeholder="请输入用户名"
-              size="large"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-input
-              v-model="loginForm.password"
-              :prefix-icon="Lock"
-              class="login-input"
-              placeholder="请输入密码"
-              show-password
-              size="large"
-              type="password"
-          />
-        </el-form-item>
-        <el-form-item>
-          <div class="captcha-row">
+        <el-form :model="loginForm" @keyup.enter="handleLogin">
+          <el-form-item>
             <el-input
-                v-model="loginForm.captcha"
-                :prefix-icon="CircleCheck"
-                class="captcha-input"
-                maxlength="4"
-                placeholder="请输入验证码"
+                v-model="loginForm.username"
+                :prefix-icon="User"
+                class="login-input"
+                placeholder="请输入用户名"
                 size="large"
             />
-            <canvas
-                ref="captchaCanvas"
-                class="captcha-image"
-                height="40"
-                title="点击刷新验证码"
-                width="100"
-                @click="refreshCaptcha"
-            ></canvas>
-          </div>
-        </el-form-item>
-        <!-- 登录失败常驻提示：表单内联红条，直到下次尝试才清除 -->
-        <el-form-item v-if="loginError">
-          <el-alert
-              :closable="false"
-              :title="loginError"
-              class="login-error-alert"
-              show-icon
-              type="error"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button
-              :loading="loading"
-              class="login-button"
-              size="large"
-              type="primary"
-              @click="handleLogin"
-          >
-            登 录
-          </el-button>
-        </el-form-item>
-        <el-form-item class="cred-item">
-          <span class="cred-tip">测试账号：admin / 123456</span>
-        </el-form-item>
-      </el-form>
-    </div>
+          </el-form-item>
+          <el-form-item>
+            <el-input
+                v-model="loginForm.password"
+                :prefix-icon="Lock"
+                class="login-input"
+                placeholder="请输入密码"
+                show-password
+                size="large"
+                type="password"
+            />
+          </el-form-item>
+          <el-form-item>
+            <div class="captcha-row">
+              <el-input
+                  v-model="loginForm.captcha"
+                  :prefix-icon="CircleCheck"
+                  class="captcha-input"
+                  maxlength="4"
+                  placeholder="请输入验证码"
+                  size="large"
+              />
+              <canvas
+                  ref="captchaCanvas"
+                  class="captcha-image"
+                  height="40"
+                  title="点击刷新验证码"
+                  width="100"
+                  @click="refreshCaptcha"
+              ></canvas>
+            </div>
+          </el-form-item>
+          <!-- 登录失败常驻提示：表单内联红条，直到下次尝试才清除 -->
+          <el-form-item v-if="loginError">
+            <el-alert
+                :closable="false"
+                :title="loginError"
+                class="login-error-alert"
+                show-icon
+                type="error"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button
+                :loading="loading"
+                class="login-button"
+                size="large"
+                type="primary"
+                @click="handleLogin"
+            >
+              登 录
+            </el-button>
+          </el-form-item>
+          <el-form-item class="cred-item">
+            <span class="cred-tip">测试账号：admin / 123456</span>
+          </el-form-item>
+        </el-form>
+      </div>
 
-    <p class="login-footer">长沙市麓康医院医保结算前置平台 · 仅限授权人员使用 · V1.0.0</p>
+      <p class="login-footer">医保结算前置系统 · 仅限授权人员使用 · V1.0.0</p>
+    </main>
   </div>
 </template>
 
@@ -95,7 +114,7 @@
 import {onMounted, reactive, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import {ElMessage} from 'element-plus'
-import {CircleCheck, Lock, User} from '@element-plus/icons-vue'
+import {CircleCheck, Document, Lock, Odometer, Tickets, User} from '@element-plus/icons-vue'
 import {login} from '@/api/system'
 import {encryptPassword} from '@/lib/password'
 
@@ -110,7 +129,7 @@ const loginForm = reactive({
   captcha: '',
 })
 
-// ===== 前端验证码（与 cslk 登录页同款：canvas 绘制，去掉易混淆字符） =====
+// ===== 前端验证码（canvas 绘制，去掉易混淆字符） =====
 const AUTO_FILL_CAPTCHA = true
 const captchaCanvas = ref(null)
 let captchaCode = ''
@@ -198,7 +217,7 @@ const handleLogin = async () => {
     })
 
     if (res.code === 200) {
-      // 保存 token 和用户信息（与 cslk 同一套 localStorage 键）
+      // 保存 token 和用户信息
       localStorage.setItem('token', res.data.token)
       localStorage.setItem('userId', res.data.userId)
       localStorage.setItem('username', res.data.username)
@@ -221,100 +240,149 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
-.login-container {
+.login-page {
   min-height: 100vh;
+  display: flex;
+  align-items: stretch;
+  background:
+      radial-gradient(1100px 520px at 88% -12%, rgba(64, 178, 255, 0.22), transparent 60%),
+      radial-gradient(900px 500px at -8% 108%, rgba(14, 148, 136, 0.28), transparent 62%),
+      linear-gradient(135deg, #072C52 0%, #0B4F8A 55%, #1269B5 100%);
+}
+
+/* ===== 左侧品牌区 ===== */
+.brand-panel {
+  flex: 1 1 52%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #EAF2F9 0%, #DDEAF4 100%);
-  padding: 88px 24px 24px;
+  padding: 48px 56px 96px;
+  color: #fff;
 }
 
-.login-banner {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 24px;
-  background: var(--his-header-bg);
-  box-shadow: var(--his-chrome-shadow);
+.brand-inner {
+  max-width: 420px;
+  width: 100%;
 }
 
-.login-banner-logo-wrap {
-  width: 36px;
-  height: 36px;
+.brand-logo-wrap {
+  width: 92px;
+  height: 92px;
   border-radius: 50%;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.96);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  flex-shrink: 0;
+  box-shadow: 0 8px 28px rgba(4, 34, 74, 0.35);
+  margin-bottom: 24px;
 }
 
-.login-banner-logo {
+.brand-logo {
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
 
-.login-banner-name {
-  font-size: 18px;
-  font-weight: 600;
-  color: #fff;
+.brand-title {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  margin: 0 0 12px;
+  line-height: 1.2;
+}
+
+.brand-sub {
+  font-size: 12px;
   letter-spacing: 2px;
-  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.62);
+  margin: 0 0 36px;
+  word-break: keep-all;
+}
+
+.brand-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 20px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.88);
+  letter-spacing: 0.5px;
+}
+
+.feature-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: #8ED1FF;
+  flex-shrink: 0;
+}
+
+.brand-footer {
+  position: absolute;
+  bottom: 28px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ===== 右侧登录区 ===== */
+.login-main {
+  flex: 0 0 46%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 40px 24px;
 }
 
 .login-card {
-  width: 440px;
-  background: #fff;
-  border: 1px solid #E3ECF5;
-  border-radius: 14px;
-  box-shadow: 0 6px 24px rgba(11, 79, 138, 0.08);
+  width: 420px;
+  max-width: 100%;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 16px;
+  box-shadow: 0 18px 48px rgba(4, 34, 74, 0.28);
   padding: 40px 40px 28px;
 }
 
-.login-header {
-  text-align: center;
-}
-
-.hospital-logo {
-  width: 88px;
-  height: 88px;
-  margin: 0 auto 12px;
-  display: block;
-}
-
-.hospital-name {
-  font-size: 24px;
+.login-title {
+  font-size: 22px;
   font-weight: 700;
-  color: #0B4F8A;
-  letter-spacing: 4px;
+  color: #0B3D6E;
   margin: 0;
-}
-
-.hospital-sub {
-  font-size: 12px;
-  color: #8CA6BC;
   letter-spacing: 2px;
-  margin: 6px 0 0;
 }
 
-.login-divider {
-  height: 1px;
-  background: #E9F0F7;
-  margin: 24px 0 20px;
+.login-desc {
+  font-size: 12.5px;
+  color: #8CA6BC;
+  margin: 6px 0 24px;
+  letter-spacing: 0.5px;
 }
 
 .login-input :deep(.el-input__wrapper) {
-  border-radius: 8px;
+  border-radius: 10px;
+  padding-left: 12px;
 }
 
 .captcha-row {
@@ -336,7 +404,7 @@ const handleLogin = async () => {
 .captcha-image {
   width: 100px;
   height: 40px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid #E3ECF5;
   cursor: pointer;
   flex-shrink: 0;
@@ -344,11 +412,17 @@ const handleLogin = async () => {
 
 .login-button {
   width: 100%;
-  height: 44px;
+  height: 46px;
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 6px;
-  border-radius: 8px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #1269B5 0%, #0B4F8A 100%);
+}
+
+.login-button:hover {
+  background: linear-gradient(135deg, #1a7bc9 0%, #0e5a99 100%);
 }
 
 .cred-item {
@@ -365,9 +439,21 @@ const handleLogin = async () => {
 }
 
 .login-footer {
-  margin-top: 24px;
+  margin-top: 22px;
   font-size: 12px;
-  color: #9AAFC2;
+  color: rgba(255, 255, 255, 0.6);
   letter-spacing: 1px;
+}
+
+/* ===== 窄屏适配：隐藏品牌区，登录卡居中 ===== */
+@media (max-width: 960px) {
+  .brand-panel {
+    display: none;
+  }
+
+  .login-main {
+    flex: 1 1 auto;
+    padding: 32px 20px;
+  }
 }
 </style>

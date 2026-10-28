@@ -1,0 +1,44 @@
+services:
+  csmig-backend:
+    build:
+      context: ./backend
+    image: csmig-backend:local
+    container_name: csmig-backend
+    restart: unless-stopped
+    # 连接串与口令全部来自同目录 .env（该文件不入库），application.yml 里只有 ${MIP_*:} 占位
+    env_file: .env
+    environment:
+      TZ: Asia/Shanghai
+      JAVA_OPTS: -Xms384m -Xmx1g -XX:+UseG1GC -Duser.timezone=Asia/Shanghai
+    ports:
+      # 宿主 8011 → 容器 8091，context-path /mip
+      - "8011:8091"
+    # MySQL（宿主机进程）与 csmis 后端（宿主 8010）都走 host.docker.internal 回到宿主
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8091" ]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 90s
+    networks:
+      - mip
+
+  csmig-front:
+    build:
+      context: ./front
+    image: csmig-front:local
+    container_name: csmig-front
+    restart: unless-stopped
+    ports:
+      - "3300:80"
+    depends_on:
+      csmig-backend:
+        condition: service_healthy
+    networks:
+      - mip
+
+networks:
+  mip:
+    driver: bridge

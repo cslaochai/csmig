@@ -11,7 +11,7 @@
         </router-link>
         <nav class="breadcrumb-nav">
           <el-icon class="crumb-icon"><HomeFilled/></el-icon>
-          <span class="crumb-label">医保结算前置平台</span>
+          <span class="crumb-label">医保结算前置系统</span>
           <el-icon v-if="currentTitle" class="crumb-sep"><ArrowRight/></el-icon>
           <span v-if="currentTitle" class="crumb-current">{{ currentTitle }}</span>
         </nav>
@@ -57,7 +57,7 @@
           </div>
         </nav>
         <div class="sidebar-footer">
-          <span class="sidebar-footer-text">csmig 前置系统 · v1.0.0</span>
+          <span class="sidebar-footer-text">医保结算前置系统 · v1.0.0</span>
         </div>
       </aside>
 

@@ -8,9 +8,18 @@ target/
 .DS_Store
 node_modules/
 dist/
+# 容器部署真值（compose 的 env_file：库口令 / 上游地址 / SM2 / JWT），只留 docker/.env.example 入库
+.env
 
 # ============ 内部调研 / 施工手册：严禁入库 ============
 # 口径：开源项目不得出现第三方厂商名称；厂商调研与施工手册属内部资料，只留本地。
 施工手册/
 **/CA厂商调研/
 **/*厂商调研*
+
+# ============ 前端构建产物：严禁入库 ============
+# mig_backend 把 vite 打包后的前端 bundle 托管在 static/assets/，属编译产物，由构建重新生成。
+source/mig_backend/src/main/resources/static/assets/
+# 开发期临时产物（vite 日志、登录预览截图）
+.vite-dev*.log
+**/.login-preview.png
