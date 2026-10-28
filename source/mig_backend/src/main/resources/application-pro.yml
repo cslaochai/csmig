@@ -1,0 +1,23 @@
+# 生产环境：只写「与 dev 取值不同」的项，真值由容器 .env 注入（清单见 docker/.env.example）
+spring:
+  datasource:
+    url: ${MIP_DB_URL:}
+    username: ${MIP_DB_USERNAME:}
+    password: ${MIP_DB_PASSWORD:}
+
+mip:
+  upstream:
+    # 医保局平台：生产必须给真实局端地址；localhost 默认值只够本机联调
+    base-url: ${MIP_UPSTREAM_URL:http://localhost:8090/mss}
+  crypto:
+    # 院内段/局端段 SM4 会话密钥：不注入则国密报文加解密失败，医保链路不可用
+    sm4-key-his: ${MIP_SM4_KEY_HIS:}
+    sm4-key-mss: ${MIP_SM4_KEY_MSS:}
+  security:
+    sm2:
+      # 登录口令传输加密 SM2 私钥/公钥（16进制）：私钥写死固定值，重启不失效；公钥留空由私钥推导
+      private-key: 7dd3c84532ac478e122144f643bfb1d8b9aa2b505675fbf788d333a128abffe0
+      public-key: ""
+  jwt:
+    # JWT签名密钥：不注入则 token 签发/校验不可用
+    secret: ${MIP_JWT_SECRET:}
