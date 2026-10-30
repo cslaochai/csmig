@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Data
 @TableName("mip_gateway_log")
 public class GatewayLog {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
     private String msgType;
     private String tradeNo;

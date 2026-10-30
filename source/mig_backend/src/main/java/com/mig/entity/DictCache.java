@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @Data
 @TableName("mip_dict_cache")
 public class DictCache {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
     /** 目录类型：DRUG-药品 DIAG-诊疗项目 MAT-医用耗材 IVD-体外诊断试剂 */
     private String dictType;

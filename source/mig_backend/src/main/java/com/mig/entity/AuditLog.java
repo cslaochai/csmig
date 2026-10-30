@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Data
 @TableName("mip_audit_log")
 public class AuditLog {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
     /** 操作人（登录用户名） */
     private String username;

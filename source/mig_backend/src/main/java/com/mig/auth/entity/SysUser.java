@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @TableName("mip_sys_user")
 public class SysUser {
 
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     private String username;

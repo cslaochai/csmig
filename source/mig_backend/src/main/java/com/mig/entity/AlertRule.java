@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @Data
 @TableName("mip_alert_rule")
 public class AlertRule {
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
     /** 规则类型：FAIL_RATE-失败率 FAIL_COUNT-失败笔数 AVG_COST-平均耗时 */
     private String ruleType;
