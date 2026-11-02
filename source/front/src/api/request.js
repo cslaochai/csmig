@@ -1,9 +1,9 @@
 import axios from 'axios'
 import {ElMessage} from 'element-plus'
 
-// 前置机后端 context-path 为 /mig（vite 代理 /mig → http://localhost:8091）
+// 前置机后端 context-path 为 /mig；本地默认直连 /mig，门户部署构建用 VITE_API_PREFIX=/mig-api 注入
 const request = axios.create({
-    baseURL: '/mig',
+    baseURL: import.meta.env.VITE_API_PREFIX || '/mig',
     timeout: 30000,
     headers: {
         'Content-Type': 'application/json'
@@ -101,7 +101,7 @@ request.interceptors.response.use(
                     localStorage.removeItem('token')
                     if (!redirectingToLogin) {
                         redirectingToLogin = true
-                        window.location.href = '/login'
+                        window.location.href = `${import.meta.env.BASE_URL}login`
                     }
                 }
                 return Promise.reject(error)
