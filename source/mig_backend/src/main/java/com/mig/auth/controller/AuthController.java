@@ -7,6 +7,7 @@ import com.mig.auth.vo.PublicKeyVO;
 import com.mig.auth.vo.UserLoginVO;
 import com.mig.common.Result;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,7 +33,7 @@ public class AuthController {
      * 账号口令登录：校验通过后签发登录令牌。
      */
     @PostMapping("/login")
-    public Result<LoginVO> login(@RequestBody LoginRequestDTO loginRequestDTO, HttpServletRequest request) {
+    public Result<LoginVO> login(@RequestBody @Valid LoginRequestDTO loginRequestDTO, HttpServletRequest request) {
         return Result.success("登录成功", authService.login(loginRequestDTO, request));
     }
 

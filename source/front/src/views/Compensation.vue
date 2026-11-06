@@ -22,7 +22,7 @@
       </div>
       <el-table :data="list" size="small" @selection-change="rows => selection = rows">
         <el-table-column type="selection" width="42"/>
-        <el-table-column prop="id" label="ID" width="70"/>
+        <el-table-column prop="id" label="ID" min-width="180" show-overflow-tooltip/>
         <el-table-column label="类型" width="150">
           <template #default="{row}">
             <span>{{ msgTypeName(row.msgType) }}</span>
@@ -48,7 +48,7 @@
     </el-dialog>
     <el-dialog v-model="batchResult.visible" title="批量重发结果" width="640px">
       <el-table :data="batchResult.failed" size="small">
-        <el-table-column prop="id" label="ID" width="80"/>
+        <el-table-column prop="id" label="ID" min-width="180" show-overflow-tooltip/>
         <el-table-column prop="tradeNo" label="交易号" width="180" show-overflow-tooltip/>
         <el-table-column prop="msg" label="失败原因" show-overflow-tooltip/>
       </el-table>
@@ -66,16 +66,16 @@ import { msgTypeName } from '@/lib/msgTypes'
 
 const query = reactive({ msgType: '', tradeNo: '', date: '' })
 const list = reactive([])
-let total = 0
+const total = ref(0)
 const body = reactive({ visible: false, title: '', content: '' })
 const selection = ref([])
 const batchLoading = ref(false)
 const batchResult = reactive({ visible: false, failed: [] })
 
 async function load(page) {
-  const res = await request.get('/admin/logs/page', { params: { page, size: 20, success: 0, ...query } })
-  total = res.data.total
-  list.splice(0, list.length, ...res.data.list)
+  const res = await request.get('/admin/logs/page', { params: { pageNum: page, pageSize: 20, success: 0, ...query } })
+  total.value = res.data.total
+  list.splice(0, list.length, ...res.data.records)
 }
 function reset() { query.msgType = ''; query.tradeNo = ''; query.date = ''; load(1) }
 function showBody(row) {

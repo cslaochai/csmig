@@ -49,7 +49,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginVO login(LoginRequestDTO loginRequestDTO, HttpServletRequest request) {
-        String username = loginRequestDTO.getUsername() == null ? "" : loginRequestDTO.getUsername().trim();
+        String username = loginRequestDTO.getUsername().trim();
         String password;
         try {
             password = passwordCipherService.decrypt(loginRequestDTO.getPassword());

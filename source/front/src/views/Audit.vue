@@ -16,7 +16,7 @@
         </el-form-item>
       </el-form>
       <el-table :data="list" size="small">
-        <el-table-column prop="id" label="ID" width="70"/>
+        <el-table-column prop="id" label="ID" min-width="180" show-overflow-tooltip/>
         <el-table-column label="操作" width="110">
           <template #default="{row}">
             <el-tag :type="actionType(row.action)" size="small">{{ actionName(row.action) }}</el-tag>
@@ -38,7 +38,7 @@
   </div>
 </template>
 <script setup>
-import { reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import request from '@/api/request'
 
 const ACTION_NAMES = {
@@ -57,16 +57,16 @@ function actionType(a) {
 
 const query = reactive({ action: '', username: '', date: '' })
 const list = reactive([])
-let total = 0
+const total = ref(0)
 
 async function load(page) {
-  const params = { page, size: 20 }
+  const params = { pageNum: page, pageSize: 20 }
   if (query.action) params.action = query.action
   if (query.username) params.username = query.username
   if (query.date) params.date = query.date
   const res = await request.get('/admin/audit/page', { params })
-  total = res.data.total
-  list.splice(0, list.length, ...res.data.list)
+  total.value = res.data.total
+  list.splice(0, list.length, ...res.data.records)
 }
 function reset() { query.action = ''; query.username = ''; query.date = ''; load(1) }
 

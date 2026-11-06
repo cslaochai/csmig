@@ -1,13 +1,24 @@
 package com.mig.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mig.common.PageParam;
+import com.mig.common.PageResult;
+import com.mig.common.Result;
 import com.mig.config.CryptoProperties;
 import com.mig.config.GatewayConfig;
-import com.mig.common.Result;
+import com.mig.dto.AlertRuleUpsertDTO;
+import com.mig.dto.AuditPageQueryDTO;
+import com.mig.dto.BatchResendDTO;
+import com.mig.dto.DailySummaryQueryDTO;
+import com.mig.dto.DictDownloadQueryDTO;
+import com.mig.dto.DictPageQueryDTO;
+import com.mig.dto.DictUpsertDTO;
+import com.mig.dto.GatewayLogPageQueryDTO;
+import com.mig.dto.ReconExportQueryDTO;
+import com.mig.dto.ReconSummaryQueryDTO;
 import com.mig.entity.AlertRule;
 import com.mig.entity.AuditLog;
 import com.mig.entity.DictCache;
@@ -18,9 +29,26 @@ import com.mig.mapper.DictCacheMapper;
 import com.mig.mapper.GatewayLogMapper;
 import com.mig.service.AuditService;
 import com.mig.service.GatewayForwardService;
+import com.mig.vo.AlertRuleVO;
+import com.mig.vo.AlertsSummaryVO;
+import com.mig.vo.AuditLogListVO;
+import com.mig.vo.BatchResendResultVO;
+import com.mig.vo.CryptoStatusVO;
+import com.mig.vo.DailySummaryVO;
+import com.mig.vo.DictCacheVO;
+import com.mig.vo.DictDownloadResultVO;
+import com.mig.vo.DictTypeStatVO;
+import com.mig.vo.GatewayLogListVO;
+import com.mig.vo.MsgTypeStatVO;
+import com.mig.vo.ReconSummaryVO;
+import com.mig.vo.ResendItemVO;
+import com.mig.vo.TodayStatsVO;
+import com.mig.vo.UpstreamConfigVO;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -31,7 +59,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +74,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AdminController {
 
+    private static final int RECENT_LIMIT = 10;
+
     private final GatewayLogMapper logMapper;
     private final DictCacheMapper dictMapper;
     private final AuditLogMapper auditMapper;
@@ -59,70 +89,46 @@ public class AdminController {
     // ---------- ① 监控面板：今日统计 ----------
 
     @GetMapping("/stats/today")
-    public Result<Map<String, Object>> todayStats() {
-        LocalDateTime dayStart = LocalDate.now().atStartOfDay();
-        LocalDateTime dayEnd = dayStart.plusDays(1);
-        List<GatewayLog> today = logMapper.selectList(
-                new LambdaQueryWrapper<GatewayLog>()
-                        .ge(GatewayLog::getCreatedAt, dayStart)
-                        .lt(GatewayLog::getCreatedAt, dayEnd));
-        int total = today.size();
-        long success = today.stream().filter(l -> l.getSuccess() == 1).count();
-        long fail = total - success;
-        double avgMs = today.stream().filter(l -> l.getCostMs() != null)
-                .mapToInt(GatewayLog::getCostMs).average().orElse(0);
-        // 按报文类型分组
-        Map<String, long[]> byType = new HashMap<>();
-        for (GatewayLog l : today) {
-            String t = l.getMsgType();
-            byType.computeIfAbsent(t, k -> new long[2]);
-            byType.get(t)[0]++;
-            if (l.getSuccess() == 1) byType.get(t)[1]++;
-        }
-        Map<String, Object> result = new HashMap<>();
-        result.put("total", total);
-        result.put("success", success);
-        result.put("fail", fail);
-        result.put("successRate", total == 0 ? 100 : Math.round(success * 1000.0 / total) / 10.0);
-        result.put("avgCostMs", Math.round(avgMs));
-        result.put("byType", byType);
-        // 最近10条（面板异常高亮）
-        List<GatewayLog> recent = logMapper.selectList(
-                new LambdaQueryWrapper<GatewayLog>()
-                        .orderByDesc(GatewayLog::getId).last("LIMIT 10"));
-        result.put("recent", recent);
-        return Result.success(result);
+    public Result<TodayStatsVO> todayStats() {
+        List<GatewayLog> today = selectToday();
+        CountStat count = countOf(today);
+        TodayStatsVO vo = new TodayStatsVO();
+        vo.setTotal(count.total());
+        vo.setSuccess(count.success());
+        vo.setFail(count.fail());
+        vo.setSuccessRate(count.successRate());
+        vo.setAvgCostMs(count.avgCostMs());
+        vo.setByType(groupByMsgType(today));
+        vo.setRecent(selectRecent().stream().map(AdminController::toLogVO).toList());
+        return Result.success(vo);
     }
 
     // ---------- ② 交易流水分页查询 ----------
 
     @GetMapping("/logs/page")
-    public Result<Map<String, Object>> logsPage(@RequestParam(defaultValue = "1") int page,
-                                        @RequestParam(defaultValue = "20") int size,
-                                        @RequestParam(required = false) String msgType,
-                                        @RequestParam(required = false) String tradeNo,
-                                        @RequestParam(required = false) String date,
-                                        @RequestParam(required = false) Integer success) {
+    public Result<PageResult<GatewayLogListVO>> logsPage(@Valid GatewayLogPageQueryDTO query) {
         LambdaQueryWrapper<GatewayLog> q = new LambdaQueryWrapper<>();
-        if (msgType != null && !msgType.isBlank()) q.eq(GatewayLog::getMsgType, msgType);
-        if (tradeNo != null && !tradeNo.isBlank()) q.like(GatewayLog::getTradeNo, tradeNo);
-        if (date != null && !date.isBlank()) {
-            LocalDateTime ds = LocalDate.parse(date).atStartOfDay();
+        if (query.getMsgType() != null && !query.getMsgType().isBlank()) {
+            q.eq(GatewayLog::getMsgType, query.getMsgType());
+        }
+        if (query.getTradeNo() != null && !query.getTradeNo().isBlank()) {
+            q.like(GatewayLog::getTradeNo, query.getTradeNo());
+        }
+        if (query.getDate() != null && !query.getDate().isBlank()) {
+            LocalDateTime ds = LocalDate.parse(query.getDate()).atStartOfDay();
             q.ge(GatewayLog::getCreatedAt, ds).lt(GatewayLog::getCreatedAt, ds.plusDays(1));
         }
-        if (success != null) q.eq(GatewayLog::getSuccess, success);
+        if (query.getSuccess() != null) {
+            q.eq(GatewayLog::getSuccess, query.getSuccess());
+        }
         q.orderByDesc(GatewayLog::getId);
-        Page<GatewayLog> p = logMapper.selectPage(new Page<>(page, size), q);
-        Map<String, Object> r = new HashMap<>();
-        r.put("total", p.getTotal());
-        r.put("list", p.getRecords());
-        return Result.success(r);
+        return Result.success(pageOfVO(logMapper.selectPage(toPage(query), q), AdminController::toLogVO));
     }
 
     // ---------- ③ 手动重发（补偿超时/结果未知交易） ----------
 
     @PostMapping("/logs/{id}/resend")
-    public Result<Object> resend(@PathVariable Long id, HttpServletRequest request) {
+    public Result<String> resend(@PathVariable Long id, HttpServletRequest request) {
         GatewayLog row = logMapper.selectById(id);
         if (row == null) {
             return Result.error(404, "日志不存在");
@@ -137,70 +143,67 @@ public class AdminController {
     // ---------- ③b 批量重发（失败补偿多选） ----------
 
     @PostMapping("/logs/batch-resend")
-    public Result<Map<String, Object>> batchResend(@RequestBody Map<String, List<Long>> body, HttpServletRequest request) {
-        List<Long> ids = body.get("ids") == null ? List.of() : body.get("ids");
-        if (ids.isEmpty()) {
-            throw new IllegalArgumentException("请选择要重发的交易");
-        }
+    public Result<BatchResendResultVO> batchResend(@RequestBody @Valid BatchResendDTO dto, HttpServletRequest request) {
         int ok = 0, fail = 0;
-        List<Map<String, Object>> results = new java.util.ArrayList<>();
-        for (Long id : ids) {
-            Map<String, Object> item = new HashMap<>();
+        List<ResendItemVO> results = new ArrayList<>();
+        for (Long id : dto.getIds()) {
+            ResendItemVO item = new ResendItemVO();
+            item.setId(id);
             GatewayLog row = logMapper.selectById(id);
-            item.put("id", id);
             if (row == null) {
-                item.put("ok", false);
-                item.put("msg", "日志不存在");
+                item.setOk(false);
+                item.setMsg("日志不存在");
                 fail++;
                 results.add(item);
                 continue;
             }
-            item.put("msgType", row.getMsgType());
-            item.put("tradeNo", row.getTradeNo());
+            item.setMsgType(row.getMsgType());
+            item.setTradeNo(row.getTradeNo());
             try {
                 forwardService.forward(row.getMsgType(), row.getRequestBody());
-                item.put("ok", true);
+                item.setOk(true);
                 ok++;
             } catch (RuntimeException e) {
-                item.put("ok", false);
-                item.put("msg", e.getMessage());
+                item.setOk(false);
+                item.setMsg(e.getMessage());
                 fail++;
             }
             results.add(item);
         }
-        auditService.record(request, "RESEND", "batch:" + ids.size(),
+        auditService.record(request, "RESEND", "batch:" + dto.getIds().size(),
                 "批量重发 " + ok + " 成功 / " + fail + " 失败");
-        Map<String, Object> r = new HashMap<>();
-        r.put("ok", ok);
-        r.put("fail", fail);
-        r.put("results", results);
-        return Result.success(r);
+        BatchResendResultVO vo = new BatchResendResultVO();
+        vo.setOk(ok);
+        vo.setFail(fail);
+        vo.setResults(results);
+        return Result.success(vo);
     }
 
     // ---------- ④ 配置查看（动态配置后续可扩展） ----------
 
     @GetMapping("/config")
-    public Result<Map<String, Object>> config() {
-        Map<String, Object> r = new HashMap<>();
-        r.put("upstreamUrl", upstreamProps.getBaseUrl());
-        r.put("connectTimeoutMs", upstreamProps.getConnectTimeoutMs());
-        r.put("readTimeoutMs", upstreamProps.getReadTimeoutMs());
-        return Result.success(r);
+    public Result<UpstreamConfigVO> config() {
+        UpstreamConfigVO vo = new UpstreamConfigVO();
+        vo.setUpstreamUrl(upstreamProps.getBaseUrl());
+        vo.setConnectTimeoutMs(upstreamProps.getConnectTimeoutMs());
+        vo.setReadTimeoutMs(upstreamProps.getReadTimeoutMs());
+        return Result.success(vo);
     }
 
     // ---------- ⑤ 对账报表导出CSV ----------
 
     @GetMapping("/recon/export")
-    public ResponseEntity<ByteArrayResource> exportCsv(@RequestParam String date,
-                                                       @RequestParam(required = false) String msgType,
-                                                       @RequestParam(required = false, defaultValue = "false") boolean failOnly,
-                                                       HttpServletRequest request) {
-        LocalDateTime ds = LocalDate.parse(date).atStartOfDay();
+    public ResponseEntity<ByteArrayResource> exportCsv(@Valid ReconExportQueryDTO query, HttpServletRequest request) {
+        LocalDateTime ds = LocalDate.parse(query.getDate()).atStartOfDay();
         LambdaQueryWrapper<GatewayLog> q = new LambdaQueryWrapper<GatewayLog>()
                 .ge(GatewayLog::getCreatedAt, ds)
                 .lt(GatewayLog::getCreatedAt, ds.plusDays(1));
-        if (msgType != null && !msgType.isBlank()) q.eq(GatewayLog::getMsgType, msgType);
-        if (failOnly) q.eq(GatewayLog::getSuccess, 0);
+        if (query.getMsgType() != null && !query.getMsgType().isBlank()) {
+            q.eq(GatewayLog::getMsgType, query.getMsgType());
+        }
+        if (query.isFailOnly()) {
+            q.eq(GatewayLog::getSuccess, 0);
+        }
         List<GatewayLog> list = logMapper.selectList(q.orderByAsc(GatewayLog::getId));
         StringBuilder sb = new StringBuilder();
         sb.append("ID,报文类型,交易号,成功,耗时(ms),错误信息,时间\n");
@@ -216,10 +219,10 @@ public class AdminController {
         }
         byte[] bytes = sb.toString().getBytes(StandardCharsets.UTF_8);
         ByteArrayResource resource = new ByteArrayResource(bytes);
-        auditService.record(request, "RECON_EXPORT", "recon:" + date,
-                "导出对账CSV " + date + " 共" + list.size() + "条" + (failOnly ? "（仅失败）" : ""));
+        auditService.record(request, "RECON_EXPORT", "recon:" + query.getDate(),
+                "导出对账CSV " + query.getDate() + " 共" + list.size() + "条" + (query.isFailOnly() ? "（仅失败）" : ""));
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=recon-" + date + ".csv")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=recon-" + query.getDate() + ".csv")
                 .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
                 .body(resource);
     }
@@ -227,143 +230,101 @@ public class AdminController {
     // ---------- ⑤b 对账统计摘要（对账报表页统计卡） ----------
 
     @GetMapping("/recon/summary")
-    public Result<Map<String, Object>> reconSummary(@RequestParam(required = false) String date) {
-        LocalDateTime ds = date == null || date.isBlank()
+    public Result<ReconSummaryVO> reconSummary(@Valid ReconSummaryQueryDTO query) {
+        LocalDateTime ds = query.getDate() == null || query.getDate().isBlank()
                 ? LocalDate.now().atStartOfDay()
-                : LocalDate.parse(date).atStartOfDay();
+                : LocalDate.parse(query.getDate()).atStartOfDay();
         List<GatewayLog> list = logMapper.selectList(new LambdaQueryWrapper<GatewayLog>()
                 .ge(GatewayLog::getCreatedAt, ds)
                 .lt(GatewayLog::getCreatedAt, ds.plusDays(1)));
-        int total = list.size();
-        long success = list.stream().filter(l -> l.getSuccess() == 1).count();
-        long fail = total - success;
-        double avgMs = list.stream().filter(l -> l.getCostMs() != null)
-                .mapToInt(GatewayLog::getCostMs).average().orElse(0);
-        Map<String, long[]> byType = new LinkedHashMap<>();
-        for (GatewayLog l : list) {
-            long[] arr = byType.computeIfAbsent(l.getMsgType(), k -> new long[2]);
-            arr[0]++;
-            if (l.getSuccess() == 1) arr[1]++;
-        }
-        Map<String, Object> r = new HashMap<>();
-        r.put("date", ds.toLocalDate().toString());
-        r.put("total", total);
-        r.put("success", success);
-        r.put("fail", fail);
-        r.put("successRate", total == 0 ? 100 : Math.round(success * 1000.0 / total) / 10.0);
-        r.put("avgCostMs", Math.round(avgMs));
-        r.put("byType", byType);
-        return Result.success(r);
+        ReconSummaryVO vo = new ReconSummaryVO();
+        CountStat count = countOf(list);
+        vo.setDate(ds.toLocalDate().toString());
+        vo.setTotal(count.total());
+        vo.setSuccess(count.success());
+        vo.setFail(count.fail());
+        vo.setSuccessRate(count.successRate());
+        vo.setAvgCostMs(count.avgCostMs());
+        vo.setByType(groupByMsgType(list));
+        return Result.success(vo);
     }
 
-    // ---------- ⑩ 操作审计日志查询 ----------    @GetMapping("/audit/page")
-    public Result<Map<String, Object>> auditPage(@RequestParam(defaultValue = "1") int page,
-                                                 @RequestParam(defaultValue = "20") int size,
-                                                 @RequestParam(required = false) String action,
-                                                 @RequestParam(required = false) String username,
-                                                 @RequestParam(required = false) String date) {
+    // ---------- ⑩ 操作审计日志查询 ----------
+
+    @GetMapping("/audit/page")
+    public Result<PageResult<AuditLogListVO>> auditPage(@Valid AuditPageQueryDTO query) {
         LambdaQueryWrapper<AuditLog> q = new LambdaQueryWrapper<>();
-        if (action != null && !action.isBlank()) q.eq(AuditLog::getAction, action);
-        if (username != null && !username.isBlank()) q.like(AuditLog::getUsername, username);
-        if (date != null && !date.isBlank()) {
-            LocalDateTime ds = LocalDate.parse(date).atStartOfDay();
+        if (query.getAction() != null && !query.getAction().isBlank()) {
+            q.eq(AuditLog::getAction, query.getAction());
+        }
+        if (query.getUsername() != null && !query.getUsername().isBlank()) {
+            q.like(AuditLog::getUsername, query.getUsername());
+        }
+        if (query.getDate() != null && !query.getDate().isBlank()) {
+            LocalDateTime ds = LocalDate.parse(query.getDate()).atStartOfDay();
             q.ge(AuditLog::getCreatedAt, ds).lt(AuditLog::getCreatedAt, ds.plusDays(1));
         }
         q.orderByDesc(AuditLog::getId);
-        Page<AuditLog> p = auditMapper.selectPage(new Page<>(page, size), q);
-        Map<String, Object> r = new HashMap<>();
-        r.put("total", p.getTotal());
-        r.put("list", p.getRecords());
-        return Result.success(r);
+        return Result.success(pageOfVO(auditMapper.selectPage(toPage(query), q), AdminController::toAuditVO));
     }
 
     // ---------- ⑥ 异常告警：今日失败总览 ----------
 
     @GetMapping("/alerts/summary")
-    public Result<Map<String, Object>> alertsSummary() {
+    public Result<AlertsSummaryVO> alertsSummary() {
         LocalDateTime dayStart = LocalDate.now().atStartOfDay();
         Long todayTotal = logMapper.selectCount(new LambdaQueryWrapper<GatewayLog>()
                 .ge(GatewayLog::getCreatedAt, dayStart));
         Long todayFail = logMapper.selectCount(new LambdaQueryWrapper<GatewayLog>()
                 .eq(GatewayLog::getSuccess, 0).ge(GatewayLog::getCreatedAt, dayStart));
-        // 今日失败按报文类型分布
-        List<Map<String, Object>> byType = logMapper.selectMaps(new QueryWrapper<GatewayLog>()
-                .select("msg_type AS msgType", "COUNT(*) AS cnt")
-                .eq("success", 0).ge("created_at", dayStart)
-                .groupBy("msg_type").orderByDesc("cnt"));
-        // 最近24小时失败按小时分布
-        LocalDateTime hStart = LocalDateTime.now().minusHours(24);
-        List<Map<String, Object>> hourly = logMapper.selectMaps(new QueryWrapper<GatewayLog>()
-                .select("DATE_FORMAT(created_at, '%H') AS hour", "COUNT(*) AS cnt")
-                .eq("success", 0).ge("created_at", hStart)
-                .groupBy("hour").orderByAsc("hour"));
-        // 最近10条失败明细
-        List<GatewayLog> recent = logMapper.selectList(new LambdaQueryWrapper<GatewayLog>()
-                .eq(GatewayLog::getSuccess, 0).orderByDesc(GatewayLog::getId).last("LIMIT 10"));
-        Map<String, Object> r = new HashMap<>();
-        r.put("todayTotal", todayTotal);
-        r.put("todayFail", todayFail);
-        r.put("failRate", todayTotal == null || todayTotal == 0
+        AlertsSummaryVO vo = new AlertsSummaryVO();
+        vo.setTodayTotal(todayTotal);
+        vo.setTodayFail(todayFail);
+        vo.setFailRate(todayTotal == null || todayTotal == 0
                 ? 0 : Math.round(todayFail * 1000.0 / todayTotal) / 10.0);
-        r.put("byType", byType);
-        r.put("hourly", hourly);
-        r.put("recent", recent);
-        return Result.success(r);
+        vo.setByType(logMapper.selectFailCountByType(dayStart));
+        vo.setHourly(logMapper.selectFailCountByHour(LocalDateTime.now().minusHours(24)));
+        vo.setRecent(logMapper.selectList(new LambdaQueryWrapper<GatewayLog>()
+                        .eq(GatewayLog::getSuccess, 0).orderByDesc(GatewayLog::getId).last("LIMIT " + RECENT_LIMIT))
+                .stream().map(AdminController::toLogVO).toList());
+        return Result.success(vo);
     }
 
     // ---------- ⑦ 结算汇总：近N日按 日×报文类型 聚合 ----------
 
     @GetMapping("/summary/daily")
-    public Result<Map<String, Object>> summaryDaily(@RequestParam(defaultValue = "7") int days) {
-        int d = Math.max(1, Math.min(days, 30));
-        LocalDateTime from = LocalDate.now().minusDays(d - 1L).atStartOfDay();
-        List<Map<String, Object>> rows = logMapper.selectMaps(new QueryWrapper<GatewayLog>()
-                .select("DATE(created_at) AS day", "msg_type AS msgType", "success AS success", "COUNT(*) AS cnt")
-                .ge("created_at", from)
-                .groupBy("day", "msg_type", "success")
-                .orderByAsc("day"));
-        // { day: { msgType: [total, success, fail] } }
-        Map<String, Map<String, long[]>> byDay = new LinkedHashMap<>();
-        for (Map<String, Object> row : rows) {
-            String day = String.valueOf(row.get("day"));
-            String type = String.valueOf(row.get("msgType"));
-            int success = ((Number) row.get("success")).intValue();
-            long cnt = ((Number) row.get("cnt")).longValue();
-            long[] arr = byDay.computeIfAbsent(day, k -> new HashMap<>())
-                    .computeIfAbsent(type, k -> new long[3]);
-            arr[0] += cnt;
-            if (success == 1) arr[1] += cnt;
-            else arr[2] += cnt;
-        }
-        Map<String, Object> r = new HashMap<>();
-        r.put("days", d);
-        r.put("byDay", byDay);
-        return Result.success(r);
+    public Result<DailySummaryVO> summaryDaily(@Valid DailySummaryQueryDTO query) {
+        int days = query.getDays();
+        DailySummaryVO vo = new DailySummaryVO();
+        vo.setDays(days);
+        vo.setRows(logMapper.selectDailyTypeStats(LocalDate.now().minusDays(days - 1L).atStartOfDay()));
+        return Result.success(vo);
     }
 
     // ---------- ⑧ 密钥与证书：国密加解密开关状态 ----------
 
     @GetMapping("/crypto/status")
-    public Result<Map<String, Object>> cryptoStatus() {
-        Map<String, Object> r = new HashMap<>();
-        r.put("enabled", cryptoProperties.isEnabled());
-        r.put("algo", "SM2签名 + SM4加密");
-        r.put("mode", cryptoProperties.isEnabled() ? "生产模式（加签加密）" : "开发模式（明文透传）");
-        r.put("note", "生产期需配置CA证书、医保局公钥、SM4密钥（见 application.yml 的 mig.crypto）");
-        return Result.success(r);
+    public Result<CryptoStatusVO> cryptoStatus() {
+        CryptoStatusVO vo = new CryptoStatusVO();
+        vo.setEnabled(cryptoProperties.isEnabled());
+        vo.setAlgo("SM2签名 + SM4加密");
+        vo.setMode(cryptoProperties.isEnabled() ? "生产模式（加签加密）" : "开发模式（明文透传）");
+        vo.setNote("生产期需配置CA证书、医保局公钥、SM4密钥（见 application.yml 的 mig.crypto）");
+        return Result.success(vo);
     }
 
     // ---------- ⑨ 医保目录缓存管理（开发期本地维护，生产期由医保局目录下载同步） ----------
 
     @GetMapping("/dict/page")
-    public Result<Map<String, Object>> dictPage(@RequestParam(defaultValue = "1") int page,
-                                                @RequestParam(defaultValue = "20") int size,
-                                                @RequestParam(required = false) String dictType,
-                                                @RequestParam(required = false) String keyword,
-                                                @RequestParam(required = false) Integer matchStatus) {
+    public Result<PageResult<DictCacheVO>> dictPage(@Valid DictPageQueryDTO query) {
         LambdaQueryWrapper<DictCache> q = new LambdaQueryWrapper<>();
-        if (dictType != null && !dictType.isBlank()) q.eq(DictCache::getDictType, dictType);
-        if (matchStatus != null) q.eq(DictCache::getMatchStatus, matchStatus);
+        if (query.getDictType() != null && !query.getDictType().isBlank()) {
+            q.eq(DictCache::getDictType, query.getDictType());
+        }
+        if (query.getMatchStatus() != null) {
+            q.eq(DictCache::getMatchStatus, query.getMatchStatus());
+        }
+        String keyword = query.getKeyword();
         if (keyword != null && !keyword.isBlank()) {
             q.and(w -> w.like(DictCache::getHisCode, keyword).or()
                     .like(DictCache::getHisName, keyword).or()
@@ -371,29 +332,23 @@ public class AdminController {
                     .like(DictCache::getMediName, keyword));
         }
         q.orderByDesc(DictCache::getUpdatedAt);
-        Page<DictCache> p = dictMapper.selectPage(new Page<>(page, size), q);
-        Map<String, Object> r = new HashMap<>();
-        r.put("total", p.getTotal());
-        r.put("list", p.getRecords());
-        return Result.success(r);
+        return Result.success(pageOfVO(dictMapper.selectPage(toPage(query), q), AdminController::toDictVO));
     }
 
     @GetMapping("/dict/stats")
-    public Result<List<Map<String, Object>>> dictStats() {
-        return Result.success(dictMapper.selectMaps(new QueryWrapper<DictCache>()
-                .select("dict_type AS dictType", "COUNT(*) AS total",
-                        "COALESCE(SUM(match_status = 1), 0) AS matched")
-                .groupBy("dict_type")));
+    public Result<List<DictTypeStatVO>> dictStats() {
+        return Result.success(dictMapper.selectTypeStats());
     }
 
     @PostMapping("/dict")
-    public Result<Void> dictCreate(@RequestBody DictCache dict, HttpServletRequest request) {
-        if (dict.getDictType() == null || dict.getDictType().isBlank()
-                || dict.getHisCode() == null || dict.getHisCode().isBlank()
-                || dict.getHisName() == null || dict.getHisName().isBlank()) {
-            throw new IllegalArgumentException("目录类型、院内编码、院内名称为必填");
-        }
-        dict.setMatchStatus(dict.getMatchStatus() == null ? 0 : dict.getMatchStatus());
+    public Result<Void> dictCreate(@RequestBody @Valid DictUpsertDTO dto, HttpServletRequest request) {
+        DictCache dict = new DictCache();
+        dict.setDictType(dto.getDictType());
+        dict.setHisCode(dto.getHisCode());
+        dict.setHisName(dto.getHisName());
+        dict.setMediCode(dto.getMediCode());
+        dict.setMediName(dto.getMediName());
+        dict.setMatchStatus(dto.getMatchStatus());
         dictMapper.insert(dict);
         auditService.record(request, "DICT_CREATE", "dict-" + dict.getId(),
                 "新增目录缓存 " + dict.getDictType() + "/" + dict.getHisCode() + " " + dict.getHisName());
@@ -401,20 +356,20 @@ public class AdminController {
     }
 
     @PutMapping("/dict/{id}")
-    public Result<Void> dictUpdate(@PathVariable Long id, @RequestBody DictCache dict, HttpServletRequest request) {
+    public Result<Void> dictUpdate(@PathVariable Long id, @RequestBody @Valid DictUpsertDTO dto, HttpServletRequest request) {
         DictCache row = dictMapper.selectById(id);
-        if (row == null) throw new IllegalArgumentException("目录不存在");
-        if (dict.getDictType() == null || dict.getDictType().isBlank()
-                || dict.getHisCode() == null || dict.getHisCode().isBlank()
-                || dict.getHisName() == null || dict.getHisName().isBlank()) {
-            throw new IllegalArgumentException("目录类型、院内编码、院内名称为必填");
+        if (row == null) {
+            throw new IllegalArgumentException("目录不存在");
         }
-        row.setDictType(dict.getDictType());
-        row.setHisCode(dict.getHisCode());
-        row.setHisName(dict.getHisName());
-        row.setMediCode(dict.getMediCode());
-        row.setMediName(dict.getMediName());
-        row.setMatchStatus(dict.getMatchStatus() == null ? row.getMatchStatus() : dict.getMatchStatus());
+        row.setDictType(dto.getDictType());
+        row.setHisCode(dto.getHisCode());
+        row.setHisName(dto.getHisName());
+        row.setMediCode(dto.getMediCode());
+        row.setMediName(dto.getMediName());
+        // 未传匹配状态视为不修改（页面编辑框恒有值，此处兜住只改部分字段的调用方）
+        if (dto.getMatchStatus() != null) {
+            row.setMatchStatus(dto.getMatchStatus());
+        }
         dictMapper.updateById(row);
         auditService.record(request, "DICT_UPDATE", "dict-" + id,
                 "修改目录缓存 " + row.getDictType() + "/" + row.getHisCode() + " " + row.getHisName());
@@ -433,18 +388,19 @@ public class AdminController {
     // ---------- ⑪ 告警规则配置 ----------
 
     @GetMapping("/alerts/rules")
-    public Result<List<AlertRule>> alertRules() {
+    public Result<List<AlertRuleVO>> alertRules() {
         return Result.success(alertRuleMapper.selectList(
-                new LambdaQueryWrapper<AlertRule>().orderByAsc(AlertRule::getId)));
+                        new LambdaQueryWrapper<AlertRule>().orderByAsc(AlertRule::getId))
+                .stream().map(AdminController::toRuleVO).toList());
     }
 
     @PostMapping("/alerts/rules")
-    public Result<Void> alertRuleCreate(@RequestBody AlertRule rule, HttpServletRequest request) {
-        if (rule.getRuleType() == null || rule.getRuleType().isBlank()
-                || rule.getThreshold() == null) {
-            throw new IllegalArgumentException("规则类型与阈值为必填");
-        }
-        rule.setEnabled(rule.getEnabled() == null ? 1 : rule.getEnabled());
+    public Result<Void> alertRuleCreate(@RequestBody @Valid AlertRuleUpsertDTO dto, HttpServletRequest request) {
+        AlertRule rule = new AlertRule();
+        rule.setRuleType(dto.getRuleType());
+        rule.setThreshold(dto.getThreshold());
+        rule.setEnabled(dto.getEnabled());
+        rule.setRemark(dto.getRemark());
         alertRuleMapper.insert(rule);
         auditService.record(request, "ALERT_RULE", "rule-" + rule.getId(),
                 "新增告警规则 " + rule.getRuleType() + " 阈值" + rule.getThreshold());
@@ -452,17 +408,15 @@ public class AdminController {
     }
 
     @PutMapping("/alerts/rules/{id}")
-    public Result<Void> alertRuleUpdate(@PathVariable Long id, @RequestBody AlertRule rule, HttpServletRequest request) {
+    public Result<Void> alertRuleUpdate(@PathVariable Long id, @RequestBody @Valid AlertRuleUpsertDTO dto, HttpServletRequest request) {
         AlertRule row = alertRuleMapper.selectById(id);
-        if (row == null) throw new IllegalArgumentException("规则不存在");
-        if (rule.getRuleType() == null || rule.getRuleType().isBlank()
-                || rule.getThreshold() == null) {
-            throw new IllegalArgumentException("规则类型与阈值为必填");
+        if (row == null) {
+            throw new IllegalArgumentException("规则不存在");
         }
-        row.setRuleType(rule.getRuleType());
-        row.setThreshold(rule.getThreshold());
-        row.setEnabled(rule.getEnabled() == null ? row.getEnabled() : rule.getEnabled());
-        row.setRemark(rule.getRemark());
+        row.setRuleType(dto.getRuleType());
+        row.setThreshold(dto.getThreshold());
+        row.setEnabled(dto.getEnabled());
+        row.setRemark(dto.getRemark());
         alertRuleMapper.updateById(row);
         auditService.record(request, "ALERT_RULE", "rule-" + id, "修改告警规则 " + row.getRuleType());
         return Result.success("修改成功", null);
@@ -480,21 +434,21 @@ public class AdminController {
     // ---------- ⑫ 医保局目录下载同步（开发期对端=csmis，生产期=医保局平台） ----------
 
     @PostMapping("/dict/download")
-    public Result<Map<String, Object>> dictDownload(@RequestParam String type, HttpServletRequest request) {
-        String msgType;
-        switch (type) {
-            case "DRUG" -> msgType = "1301";
-            case "DIAG" -> msgType = "1302";
-            case "MAT" -> msgType = "1303";
+    public Result<DictDownloadResultVO> dictDownload(@Valid DictDownloadQueryDTO query, HttpServletRequest request) {
+        String type = query.getType();
+        String msgType = switch (type) {
+            case "DRUG" -> "1301";
+            case "DIAG" -> "1302";
+            case "MAT" -> "1303";
             default -> throw new IllegalArgumentException("不支持的目录类型：" + type + "（DRUG/DIAG/MAT）");
-        }
+        };
         // 走统一转发（落 mig_gateway_log，目录下载也留痕）；响应为医保局报文原文
         String resp = forwardService.forward(msgType, "{\"catalogType\":\"" + type + "\"}");
         List<Map<String, Object>> items = parseDownloadResp(resp, type);
         // 该类型已有医保编码 → id 映射，做增量 upsert（his_code 留空，待院内目录导入后匹配）
         List<DictCache> existing = dictMapper.selectList(new LambdaQueryWrapper<DictCache>()
                 .eq(DictCache::getDictType, type).isNotNull(DictCache::getMediCode));
-        Map<String, Long> codeToId = new HashMap<>();
+        Map<String, Long> codeToId = new LinkedHashMap<>();
         for (DictCache d : existing) {
             if (d.getMediCode() != null) codeToId.put(d.getMediCode(), d.getId());
         }
@@ -525,13 +479,15 @@ public class AdminController {
         }
         auditService.record(request, "DICT_DOWNLOAD", "dict:" + type,
                 "医保局目录下载 " + type + "：共" + items.size() + "条，新增" + imported + " 更新" + updated);
-        Map<String, Object> r = new HashMap<>();
-        r.put("type", type);
-        r.put("total", items.size());
-        r.put("imported", imported);
-        r.put("updated", updated);
-        return Result.success(r);
+        DictDownloadResultVO vo = new DictDownloadResultVO();
+        vo.setType(type);
+        vo.setTotal(items.size());
+        vo.setImported(imported);
+        vo.setUpdated(updated);
+        return Result.success(vo);
     }
+
+    // ---------- 私有辅助 ----------
 
     /** 解析医保局目录下载响应：code=200 且 data.infcode=0，否则抛错 */
     private List<Map<String, Object>> parseDownloadResp(String resp, String type) {
@@ -546,7 +502,7 @@ public class AdminController {
             }
             JsonNode list = data.path("list");
             if (!list.isArray()) return List.of();
-            List<Map<String, Object>> result = new java.util.ArrayList<>();
+            List<Map<String, Object>> result = new ArrayList<>();
             for (JsonNode n : list) {
                 result.add(objectMapper.convertValue(n, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}));
             }
@@ -556,6 +512,86 @@ public class AdminController {
         } catch (Exception e) {
             throw new IllegalArgumentException("解析医保局目录下载响应失败：" + e.getMessage(), e);
         }
+    }
+
+    private List<GatewayLog> selectToday() {
+        LocalDateTime dayStart = LocalDate.now().atStartOfDay();
+        return logMapper.selectList(new LambdaQueryWrapper<GatewayLog>()
+                .ge(GatewayLog::getCreatedAt, dayStart)
+                .lt(GatewayLog::getCreatedAt, dayStart.plusDays(1)));
+    }
+
+    private List<GatewayLog> selectRecent() {
+        return logMapper.selectList(new LambdaQueryWrapper<GatewayLog>()
+                .orderByDesc(GatewayLog::getId).last("LIMIT " + RECENT_LIMIT));
+    }
+
+    /** 总笔数/成功/失败/成功率/平均耗时：今日面板与对账摘要同口径 */
+    private record CountStat(long total, long success, long fail, double successRate, long avgCostMs) {
+    }
+
+    private static CountStat countOf(List<GatewayLog> rows) {
+        long total = rows.size();
+        long success = rows.stream().filter(l -> l.getSuccess() == 1).count();
+        double avgMs = rows.stream().filter(l -> l.getCostMs() != null)
+                .mapToInt(GatewayLog::getCostMs).average().orElse(0);
+        return new CountStat(total, success, total - success,
+                total == 0 ? 100 : Math.round(success * 1000.0 / total) / 10.0,
+                Math.round(avgMs));
+    }
+
+    /** 按报文类型汇总总笔数/成功/失败，类型码升序（面板柱图与对账明细表同用） */
+    private static List<MsgTypeStatVO> groupByMsgType(List<GatewayLog> rows) {
+        Map<String, long[]> acc = new LinkedHashMap<>();
+        for (GatewayLog r : rows) {
+            long[] c = acc.computeIfAbsent(r.getMsgType(), k -> new long[3]);
+            c[0]++;
+            if (r.getSuccess() == 1) c[1]++;
+            else c[2]++;
+        }
+        List<MsgTypeStatVO> list = new ArrayList<>();
+        acc.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(e -> {
+            MsgTypeStatVO vo = new MsgTypeStatVO();
+            vo.setMsgType(e.getKey());
+            vo.setTotal(e.getValue()[0]);
+            vo.setSuccess(e.getValue()[1]);
+            vo.setFail(e.getValue()[2]);
+            list.add(vo);
+        });
+        return list;
+    }
+
+    private static <E, V> PageResult<V> pageOfVO(Page<E> page, java.util.function.Function<E, V> converter) {
+        return PageResult.of(page.getTotal(), page.getCurrent(), page.getSize(), page.getPages(),
+                page.getRecords().stream().map(converter).toList());
+    }
+
+    private static <E> Page<E> toPage(PageParam query) {
+        return new Page<>(query.getPageNum(), query.getPageSize());
+    }
+
+    private static GatewayLogListVO toLogVO(GatewayLog row) {
+        GatewayLogListVO vo = new GatewayLogListVO();
+        BeanUtils.copyProperties(row, vo);
+        return vo;
+    }
+
+    private static AuditLogListVO toAuditVO(AuditLog row) {
+        AuditLogListVO vo = new AuditLogListVO();
+        BeanUtils.copyProperties(row, vo);
+        return vo;
+    }
+
+    private static DictCacheVO toDictVO(DictCache row) {
+        DictCacheVO vo = new DictCacheVO();
+        BeanUtils.copyProperties(row, vo);
+        return vo;
+    }
+
+    private static AlertRuleVO toRuleVO(AlertRule row) {
+        AlertRuleVO vo = new AlertRuleVO();
+        BeanUtils.copyProperties(row, vo);
+        return vo;
     }
 
     private static String escapeCsv(String s) {

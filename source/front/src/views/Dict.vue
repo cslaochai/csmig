@@ -4,9 +4,7 @@
     <el-row :gutter="16">
       <el-col v-for="s in statRowsComputed" :key="s.dictType" :span="6">
         <el-card>
-          <el-statistic :title="typeName(s.dictType)">
-            <template #default>{{ s.total }}</template>
-          </el-statistic>
+          <el-statistic :title="typeName(s.dictType)" :value="s.total"/>
           <div style="font-size:12px;color:#999">已匹配 {{ s.matched }} · 待匹配 {{ s.total - s.matched }}</div>
         </el-card>
       </el-col>
@@ -44,7 +42,7 @@
         </el-form-item>
       </el-form>
       <el-table :data="list" size="small">
-        <el-table-column prop="id" label="ID" width="70"/>
+        <el-table-column prop="id" label="ID" min-width="180" show-overflow-tooltip/>
         <el-table-column label="目录类型" width="110">
           <template #default="{row}"><el-tag size="small">{{ typeName(row.dictType) }}</el-tag></template>
         </el-table-column>
@@ -102,7 +100,7 @@ const typeName = t => TYPE_NAMES[t] || t
 
 const query = reactive({ dictType: '', keyword: '', matchStatus: '' })
 const list = reactive([])
-let total = 0
+const total = ref(0)
 
 const statRows = ref([])
 const statRowsComputed = computed(() => {
@@ -119,13 +117,13 @@ const create = reactive({
 })
 
 async function load(page) {
-  const params = { page, size: 20 }
+  const params = { pageNum: page, pageSize: 20 }
   if (query.dictType) params.dictType = query.dictType
   if (query.keyword) params.keyword = query.keyword
   if (query.matchStatus !== '') params.matchStatus = query.matchStatus
   const res = await request.get('/admin/dict/page', { params })
-  total = res.data.total
-  list.splice(0, list.length, ...res.data.list)
+  total.value = res.data.total
+  list.splice(0, list.length, ...res.data.records)
 }
 function reset() { query.dictType = ''; query.keyword = ''; query.matchStatus = ''; load(1) }
 

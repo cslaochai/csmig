@@ -2,11 +2,11 @@
   <div class="page-wrap">
     <h2 class="page-title">对账报表</h2>
     <el-row :gutter="16">
-      <el-col :span="5"><el-card><el-statistic title="总笔数"><template #default>{{ summary.total }}</template></el-statistic></el-card></el-col>
-      <el-col :span="5"><el-card><el-statistic title="成功"><template #default>{{ summary.success }}</template></el-statistic></el-card></el-col>
-      <el-col :span="5"><el-card><el-statistic title="失败"><template #default>{{ summary.fail }}</template></el-statistic></el-card></el-col>
-      <el-col :span="5"><el-card><el-statistic title="成功率"><template #default>{{ summary.successRate }}%</template></el-statistic></el-card></el-col>
-      <el-col :span="4"><el-card><el-statistic title="平均耗时"><template #default>{{ summary.avgCostMs }}ms</template></el-statistic></el-card></el-col>
+      <el-col :span="5"><el-card><el-statistic title="总笔数" :value="summary.total"/></el-card></el-col>
+      <el-col :span="5"><el-card><el-statistic title="成功" :value="summary.success"/></el-card></el-col>
+      <el-col :span="5"><el-card><el-statistic title="失败" :value="summary.fail"/></el-card></el-col>
+      <el-col :span="5"><el-card><el-statistic title="成功率" :value="summary.successRate" suffix="%"/></el-card></el-col>
+      <el-col :span="4"><el-card><el-statistic title="平均耗时" :value="summary.avgCostMs" suffix="ms"/></el-card></el-col>
     </el-row>
     <el-card style="margin-top:16px">
       <template #header>交易对账导出</template>
@@ -59,11 +59,11 @@ const date = ref(new Date().toISOString().slice(0, 10))
 const exportMsgType = ref('')
 const failOnly = ref(false)
 const exporting = ref(false)
-const summary = reactive({ total: 0, success: 0, fail: 0, successRate: 100, avgCostMs: 0, byType: {} })
+const summary = reactive({ total: 0, success: 0, fail: 0, successRate: 100, avgCostMs: 0, byType: [] })
 
-const typeRows = computed(() => Object.entries(summary.byType).map(([msgType, arr]) => ({
-  msgType, total: arr[0], success: arr[1], fail: arr[0] - arr[1],
-  rate: arr[0] === 0 ? 100 : Math.round(arr[1] * 1000.0 / arr[0]) / 10
+const typeRows = computed(() => (summary.byType || []).map(item => ({
+  msgType: item.msgType, total: item.total, success: item.success, fail: item.fail,
+  rate: item.total === 0 ? 100 : Math.round(item.success * 1000.0 / item.total) / 10
 })))
 
 async function loadSummary() {

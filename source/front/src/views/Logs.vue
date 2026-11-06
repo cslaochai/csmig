@@ -38,17 +38,17 @@
   </div>
 </template>
 <script setup>
-import { reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import request from '@/api/request'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { msgTypeName } from '@/lib/msgTypes'
 const query = reactive({ msgType:'', tradeNo:'', date:'' })
-const list = reactive([]); let total = 0
+const list = reactive([]); const total = ref(0)
 const body = reactive({ visible:false, title:'', content:'' })
 const rowClass = ({row}) => row.success===0 ? 'fail-row' : ''
 async function load(page) {
-  const res = await request.get('/admin/logs/page', { params: { page, size:20, ...query } })
-  total = res.data.total; list.splice(0, list.length, ...res.data.list)
+  const res = await request.get('/admin/logs/page', { params: { pageNum: page, pageSize: 20, ...query } })
+  total.value = res.data.total; list.splice(0, list.length, ...res.data.records)
 }
 function reset() { query.msgType=''; query.tradeNo=''; query.date=''; load(1) }
 function showBody(row, field) {

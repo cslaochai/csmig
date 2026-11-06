@@ -4,8 +4,8 @@
     <el-row :gutter="16">
       <el-col :span="8">
         <el-card>
-          <el-statistic title="加签加密开关">
-            <template #default>
+          <el-statistic title="加签加密开关" :formatter="() => ''">
+            <template #prefix>
               <el-tag :type="status.enabled ? 'success' : 'info'" size="large">{{ status.enabled ? '已启用' : '未启用' }}</el-tag>
             </template>
           </el-statistic>
@@ -13,16 +13,12 @@
       </el-col>
       <el-col :span="8">
         <el-card>
-          <el-statistic title="运行模式">
-            <template #default><span style="font-size:14px">{{ status.mode }}</span></template>
-          </el-statistic>
+          <el-statistic title="运行模式" :formatter="() => status.mode"/>
         </el-card>
       </el-col>
       <el-col :span="8">
         <el-card>
-          <el-statistic title="加密算法">
-            <template #default><span style="font-size:14px">{{ status.algo }}</span></template>
-          </el-statistic>
+          <el-statistic title="加密算法" :formatter="() => status.algo"/>
         </el-card>
       </el-col>
     </el-row>

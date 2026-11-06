@@ -32,7 +32,8 @@ mybatis-plus:
     log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
   global-config:
     db-config:
-      id-type: AUTO
+      # 主键由 MyBatis-Plus 雪花生成，表结构不得带 AUTO_INCREMENT
+      id-type: ASSIGN_ID
 
 # ===== 前置机业务参数 =====
 mig:

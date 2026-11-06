@@ -2,10 +2,10 @@
   <div class="page-wrap">
     <h2 class="page-title">实时交易看板</h2>
     <el-row :gutter="16">
-      <el-col :span="6"><el-card><el-statistic title="今日总调用"><template #default>{{ stats.total }}</template></el-statistic></el-card></el-col>
-      <el-col :span="6"><el-card><el-statistic title="成功率"><template #default>{{ stats.successRate }}%</template></el-statistic></el-card></el-col>
-      <el-col :span="6"><el-card><el-statistic title="失败"><template #default>{{ stats.fail }}</template></el-statistic></el-card></el-col>
-      <el-col :span="6"><el-card><el-statistic title="平均耗时"><template #default>{{ stats.avgCostMs }}ms</template></el-statistic></el-card></el-col>
+      <el-col :span="6"><el-card><el-statistic title="今日总调用" :value="stats.total"/></el-card></el-col>
+      <el-col :span="6"><el-card><el-statistic title="成功率" :value="stats.successRate" suffix="%"/></el-card></el-col>
+      <el-col :span="6"><el-card><el-statistic title="失败" :value="stats.fail"/></el-card></el-col>
+      <el-col :span="6"><el-card><el-statistic title="平均耗时" :value="stats.avgCostMs" suffix="ms"/></el-card></el-col>
     </el-row>
     <el-card style="margin-top:16px">
       <template #header>今日按报文类型分布（2201挂号 / 2301门诊结算 / 2304退费 / dayBill日对账等）</template>
@@ -14,7 +14,7 @@
     <el-card style="margin-top:16px">
       <template #header>最新失败交易</template>
       <el-table :data="stats.recent" size="small" empty-text="今日无失败交易">
-        <el-table-column prop="id" label="ID" width="70"/>
+        <el-table-column prop="id" label="ID" min-width="180" show-overflow-tooltip/>
         <el-table-column prop="msgType" label="类型" width="120"/>
         <el-table-column prop="tradeNo" label="交易号" width="200" show-overflow-tooltip/>
         <el-table-column label="结果" width="80">
@@ -34,23 +34,23 @@ import request from '@/api/request'
 import * as echarts from 'echarts'
 import { msgTypeName } from '@/lib/msgTypes'
 
-const stats = reactive({ total: 0, success: 0, fail: 0, successRate: 100, avgCostMs: 0, byType: {}, recent: [] })
+const stats = reactive({ total: 0, success: 0, fail: 0, successRate: 100, avgCostMs: 0, byType: [], recent: [] })
 const chartRef = ref(null)
 let chart = null
 
 function renderChart(byType) {
   if (!chartRef.value) return
   if (!chart) chart = echarts.init(chartRef.value)
-  const types = Object.keys(byType).sort()
+  const rows = [...byType].sort((a, b) => String(a.msgType).localeCompare(String(b.msgType)))
   chart.setOption({
     tooltip: { trigger: 'axis' },
     legend: { data: ['总调用', '成功'] },
     grid: { left: 40, right: 20, top: 40, bottom: 30 },
-    xAxis: { type: 'category', data: types.map(msgTypeName), name: '报文类型' },
+    xAxis: { type: 'category', data: rows.map(r => msgTypeName(r.msgType)), name: '报文类型' },
     yAxis: { type: 'value', minInterval: 1 },
     series: [
-      { name: '总调用', type: 'bar', data: types.map(t => byType[t][0]), itemStyle: { color: '#1269B5' } },
-      { name: '成功', type: 'bar', data: types.map(t => byType[t][1]), itemStyle: { color: '#67C23A' } }
+      { name: '总调用', type: 'bar', data: rows.map(r => r.total), itemStyle: { color: '#1269B5' } },
+      { name: '成功', type: 'bar', data: rows.map(r => r.success), itemStyle: { color: '#67C23A' } }
     ]
   })
 }
@@ -58,7 +58,7 @@ function renderChart(byType) {
 onMounted(async () => {
   const res = await request.get('/admin/stats/today')
   Object.assign(stats, res.data)
-  renderChart(res.data.byType || {})
+  renderChart(res.data.byType || [])
 })
 
 onBeforeUnmount(() => { if (chart) { chart.dispose(); chart = null } })

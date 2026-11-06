@@ -37,25 +37,30 @@ import request from '@/api/request'
 import * as echarts from 'echarts'
 
 const days = ref(7)
-const byDay = ref({})
+const rows = ref([])
 const chartRef = ref(null)
 let chart = null
 
-// 今日（按 byDay 中最后一天；数据为空时兜底当天）
+// 今日（按 rows 中 day 等于当天；数据为空时兜底当天）
 const today = new Date().toISOString().slice(0, 10)
 const todayRows = computed(() => {
-  const day = byDay.value[today] || {}
-  return Object.entries(day).map(([msgType, arr]) => {
-    const total = arr[0], success = arr[1], fail = arr[2]
-    return { msgType, total, success, fail, rate: total === 0 ? 100 : Math.round(success * 1000.0 / total) / 10 }
+  const map = new Map()
+  rows.value.filter(r => r.day === today).forEach(r => {
+    const g = map.get(r.msgType) || { msgType: r.msgType, total: 0, success: 0, fail: 0 }
+    g.total += Number(r.total); g.success += Number(r.success); g.fail += Number(r.fail)
+    map.set(r.msgType, g)
   })
+  return [...map.values()].map(g => ({
+    ...g, rate: g.total === 0 ? 100 : Math.round(g.success * 1000.0 / g.total) / 10
+  }))
 })
 
 function renderChart() {
   if (!chartRef.value) return
   if (!chart) chart = echarts.init(chartRef.value)
-  const dates = Object.keys(byDay.value).sort()
-  const types = [...new Set(dates.flatMap(d => Object.keys(byDay.value[d])))]
+  const dates = [...new Set(rows.value.map(r => r.day))].sort()
+  const types = [...new Set(dates.flatMap(d => rows.value.filter(r => r.day === d).map(r => r.msgType)))]
+  const totalMap = new Map(rows.value.map(r => [r.day + '|' + r.msgType, Number(r.total)]))
   chart.setOption({
     tooltip: { trigger: 'axis' },
     legend: { data: types },
@@ -64,14 +69,14 @@ function renderChart() {
     yAxis: { type: 'value', minInterval: 1 },
     series: types.map(t => ({
       name: t, type: 'bar', stack: 'total',
-      data: dates.map(d => (byDay.value[d][t] || [0])[0])
+      data: dates.map(d => totalMap.get(d + '|' + t) || 0)
     }))
   })
 }
 
 async function load() {
   const res = await request.get('/admin/summary/daily', { params: { days: days.value } })
-  byDay.value = res.data.byDay || {}
+  rows.value = res.data.rows || []
   renderChart()
 }
 
