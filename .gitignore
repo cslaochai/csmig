@@ -25,3 +25,6 @@ source/mig_backend/src/main/resources/static/assets/
 # 开发期临时产物（vite 日志、登录预览截图）
 .vite-dev*.log
 **/.login-preview.png
+
+# 本地临时脚本目录，不入库
+workspace/

@@ -12,7 +12,6 @@
         </el-form-item>
       </el-form>
       <el-table :data="list" :row-class-name="rowClass" size="small">
-        <el-table-column prop="id" label="ID" width="70"/>
         <el-table-column label="类型" width="170">
           <template #default="{row}"><span>{{ msgTypeName(row.msgType) }}</span></template>
         </el-table-column>

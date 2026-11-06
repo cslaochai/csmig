@@ -1,5 +1,7 @@
 package com.mig.auth.vo;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 /**
@@ -10,6 +12,7 @@ public class LoginVO {
 
     private String token;
 
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long userId;
 
     private String username;
