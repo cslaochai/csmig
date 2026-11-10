@@ -29,6 +29,15 @@ public class CryptoProperties {
     /** 局端段 SM4 会话密钥（32 位十六进制，与医保局端一致） */
     private String sm4KeyMss = "";
 
+    /**
+     * 医保局端 SM2 公钥 PEM（前置 → 局端方向的数字信封用）。
+     *
+     * <p>配置后该段的会话密钥不再预共享：每次转发随机生成 SM4 密钥，用这把局端公钥 SM2 加密
+     * 后随信封携带（{@code keyEnc}），局端用自己的私钥解。跨机构不需要同步任何对称密钥。
+     * 留空则退回 {@link #sm4KeyMss} 预共享模式（仅限内网联调）。</p>
+     */
+    private Resource mssPublicKey;
+
     /** 本端 SM2 签名私钥 PEM（classpath 资源路径） */
     private Resource privateKey;
 

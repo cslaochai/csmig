@@ -163,8 +163,9 @@ public class GatewayForwardService {
         if (hisSide == null) {
             synchronized (this) {
                 if (hisSide == null) {
-                    hisSide = new SecMessageCrypto(cryptoProps, cryptoProps.getSm4KeyHis());
-                    log.info("[前置机] 院内段安全通道就绪（HIS↔前置）");
+                    // 院内段：HIS 与前置各持一把预共享 SM4 密钥（院内密钥不出前置）
+                    hisSide = new SecMessageCrypto(cryptoProps, cryptoProps.getSm4KeyHis(), null);
+                    log.info("[前置机] 院内段安全通道就绪（HIS↔前置，预共享 SM4 + SM2 签名）");
                 }
             }
         }
@@ -175,8 +176,12 @@ public class GatewayForwardService {
         if (mssSide == null) {
             synchronized (this) {
                 if (mssSide == null) {
-                    mssSide = new SecMessageCrypto(cryptoProps, cryptoProps.getSm4KeyMss());
-                    log.info("[前置机] 局端段安全通道就绪（前置↔医保局）");
+                    // 局端段：配了局端公钥就走数字信封（一次一密的 SM4 密钥由局端公钥 SM2 加密随报文携带），
+                    // 跨机构不需要同步任何对称密钥；没配则退回预共享 sm4-key-mss
+                    mssSide = new SecMessageCrypto(cryptoProps, cryptoProps.getSm4KeyMss(),
+                            cryptoProps.getMssPublicKey());
+                    log.info("[前置机] 局端段安全通道就绪（前置↔医保局，{}）",
+                            cryptoProps.getMssPublicKey() == null ? "预共享 SM4" : "SM2 数字信封");
                 }
             }
         }
