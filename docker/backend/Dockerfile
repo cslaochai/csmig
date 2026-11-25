@@ -6,7 +6,7 @@ WORKDIR /app
 ENV TZ=Asia/Shanghai
 ENV JAVA_OPTS=""
 
-COPY mig-backend.jar /app/app.jar
+COPY mig-backend.jar /app/his-csmig.jar
 EXPOSE 8091
 
-ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/his-csmig.jar"]
